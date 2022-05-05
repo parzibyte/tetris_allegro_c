@@ -2,6 +2,7 @@
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_primitives.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #define ALTURA 500
 #define ANCHURA 500
@@ -46,16 +47,40 @@ int main()
         al_wait_for_event(queue, &event);
 
         if (event.type == ALLEGRO_EVENT_TIMER)
+        {
             redraw = true;
-        else if ((event.type == ALLEGRO_EVENT_KEY_DOWN) || (event.type == ALLEGRO_EVENT_DISPLAY_CLOSE))
+        }
+        else if (event.type == ALLEGRO_EVENT_KEY_CHAR)
+        {
+            int teclaPresionada = event.keyboard.keycode;
+            if (teclaPresionada == ALLEGRO_KEY_UP)
+            {
+                printf("Arriba");
+            }
+            else if (teclaPresionada == ALLEGRO_KEY_DOWN)
+            {
+                printf("Abajo");
+            }
+            else if (teclaPresionada == ALLEGRO_KEY_LEFT)
+            {
+                printf("Izquierda");
+            }
+            else if (teclaPresionada == ALLEGRO_KEY_RIGHT)
+            {
+                printf("Derecha");
+            }
+        }
+        else if ((event.type == ALLEGRO_EVENT_DISPLAY_CLOSE))
+        {
             break;
+        }
 
         if (redraw && al_is_event_queue_empty(queue))
         {
             al_clear_to_color(al_map_rgb(0, 0, 0));
-            al_draw_text(font, al_map_rgb(255, 255, 255), 0, 0, 0, "Hola mundo");
+            // al_draw_text(font, al_map_rgb(255, 255, 255), 0, 0, 0, "Hola mundo");
             int i, j;
-            float x = 0, y = 100;
+            float x = 0, y = 0;
             for (i = 0; i < 5; i++)
             {
                 for (j = 0; j < 5; j++)

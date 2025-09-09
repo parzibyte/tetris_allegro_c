@@ -41,6 +41,7 @@ int main()
     ALLEGRO_COLOR blanco = al_map_rgb_f(255, 255, 255);
     ALLEGRO_COLOR rojo = al_map_rgb_f(255, 0, 0);
     ALLEGRO_COLOR azul = al_map_rgb_f(0, 0, 255);
+    ALLEGRO_COLOR verde = al_map_rgb_f(0, 255, 0);
     int ancho = 4;
     int alto = 2;
 
@@ -50,6 +51,9 @@ int main()
     };
 
     struct Tetrimino linea;
+    // Linea acostada es 240 porque necesitamos encendidos los primeros 4 bits
+    // Línea vertical sería 136 y 136 porque necesitamos el bit 1 y 4 (128 y 8)
+    // encendidos en cada bit
     linea.cuadricula[0] = 136;
     linea.cuadricula[1] = 136;
     linea.x = 0;
@@ -104,16 +108,11 @@ int main()
                 {
                     for (int i = 0; i < 8; i++)
                     {
-                        int verdaderoX = (x * 8) + i;
                         // int encendido = (otraCuadricula[y][x] >> i) & 1;
                         int encendido = (otraCuadricula[y][x] >> (7 - i)) & 1;
                         // printf("x=%d,y=%d. Estamos en %d con bit %d. Encendido? %d. Quiero %d\n",
                         // x, y, otraCuadricula[y][x], i, encendido, verdaderoX);
                         al_draw_filled_rectangle(xCoordenada, yCoordenada, xCoordenada + MEDIDA_CUADRO, yCoordenada + MEDIDA_CUADRO, encendido == 0 ? blanco : rojo);
-                        if (linea.x == verdaderoX && linea.y == y)
-                        {
-                            al_draw_filled_rectangle(xCoordenada, yCoordenada, xCoordenada + MEDIDA_CUADRO, yCoordenada + MEDIDA_CUADRO, azul);
-                        }
                         xCoordenada += MEDIDA_CUADRO;
                     }
                     // printf("======\n");
@@ -123,6 +122,36 @@ int main()
                 }
                 xCoordenada = 0;
                 yCoordenada += MEDIDA_CUADRO;
+            }
+            // Y ahora dibujamos la pieza
+
+            // Cada figura vive en una cuadrícula de 4x4. 16 cuadros
+            // en total, medio byte por línea, 2 bytes en total
+            for (int indiceChar = 0; indiceChar < 2; indiceChar++)
+            {
+                for (int indiceBit = 0; indiceBit < 8; indiceBit++)
+                {
+                    // El índice del char me lo da xd
+                    // linea.cuadricula[xd]
+                    // Como ya tengo un int solo necesito saber la posición de su bit
+                    int encendidoLocal = (linea.cuadricula[indiceChar] >> (7 - indiceBit)) & 1;
+                    // Y ya tengo el valor, pero necesito saber en cuál de 4x4 estoy
+                    // 0,1,2,3
+                    // 4,5,6,7
+                    // 8,9,10,11
+                    // 12,13,14,15
+                    int sumaX = linea.x + (indiceBit % 4);
+                    int sumaY = linea.y + (indiceChar * 2) + (indiceBit / 4);
+                    // printf("Char %d Bit %d sumaX %d sumaY %d encendido? %d\n", indiceChar, indiceBit, sumaX, sumaY, encendidoLocal);
+                    if (encendidoLocal)
+                    {
+                        al_draw_filled_rectangle(sumaX * MEDIDA_CUADRO, sumaY * MEDIDA_CUADRO, (sumaX * MEDIDA_CUADRO) + MEDIDA_CUADRO, (sumaY * MEDIDA_CUADRO) + MEDIDA_CUADRO, azul);
+                    }
+                    else
+                    {
+                        al_draw_filled_rectangle(sumaX * MEDIDA_CUADRO, sumaY * MEDIDA_CUADRO, (sumaX * MEDIDA_CUADRO) + MEDIDA_CUADRO, (sumaY * MEDIDA_CUADRO) + MEDIDA_CUADRO, verde);
+                    }
+                }
             }
             al_flip_display();
 

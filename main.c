@@ -6,7 +6,14 @@
 
 #define ALTURA 500
 #define ANCHURA 500
-#define MEDIDA_CUADRO 50
+#define MEDIDA_CUADRO 15
+
+struct Tetrimino
+{
+    // medio byte por línea
+    unsigned char cuadricula[2];
+    int x, y;
+};
 
 int main()
 {
@@ -33,14 +40,20 @@ int main()
     al_start_timer(timer);
     ALLEGRO_COLOR blanco = al_map_rgb_f(255, 255, 255);
     ALLEGRO_COLOR rojo = al_map_rgb_f(255, 0, 0);
+    ALLEGRO_COLOR azul = al_map_rgb_f(0, 0, 255);
+    int ancho = 4;
+    int alto = 2;
 
-    int cuadricula[5][5] = {
-        {1, 0, 1, 1, 1},
-        {1, 0, 1, 0, 1},
-        {1, 0, 0, 1, 1},
-        {1, 0, 1, 1, 1},
-        {1, 0, 1, 1, 0},
+    unsigned char otraCuadricula[2][4] = {
+        {129, 0, 129, 0},
+        {0, 129, 0, 129},
     };
+
+    struct Tetrimino linea;
+    linea.cuadricula[0] = 136;
+    linea.cuadricula[1] = 136;
+    linea.x = 0;
+    linea.y = 0;
 
     while (1)
     {
@@ -56,17 +69,21 @@ int main()
             if (teclaPresionada == ALLEGRO_KEY_UP)
             {
                 printf("Arriba");
+                linea.y--;
             }
             else if (teclaPresionada == ALLEGRO_KEY_DOWN)
             {
                 printf("Abajo");
+                linea.y++;
             }
             else if (teclaPresionada == ALLEGRO_KEY_LEFT)
             {
                 printf("Izquierda");
+                linea.x--;
             }
             else if (teclaPresionada == ALLEGRO_KEY_RIGHT)
             {
+                linea.x++;
                 printf("Derecha");
             }
         }
@@ -79,21 +96,54 @@ int main()
         {
             al_clear_to_color(al_map_rgb(0, 0, 0));
             // al_draw_text(font, al_map_rgb(255, 255, 255), 0, 0, 0, "Hola mundo");
-            int i, j;
-            float x = 0, y = 0;
-            for (i = 0; i < 5; i++)
+
+            float xCoordenada = 0, yCoordenada = 0;
+            for (int y = 0; y < alto; y++)
             {
-                for (j = 0; j < 5; j++)
+                for (int x = 0; x < ancho; x++)
                 {
-                    al_draw_filled_rectangle(x, y, x + MEDIDA_CUADRO, y + MEDIDA_CUADRO, cuadricula[i][j] == 0 ? blanco : rojo);
-                    x += MEDIDA_CUADRO;
+                    for (int i = 0; i < 8; i++)
+                    {
+                        int verdaderoX = (x * 8) + i;
+                        // int encendido = (otraCuadricula[y][x] >> i) & 1;
+                        int encendido = (otraCuadricula[y][x] >> (7 - i)) & 1;
+                        // printf("x=%d,y=%d. Estamos en %d con bit %d. Encendido? %d. Quiero %d\n",
+                        // x, y, otraCuadricula[y][x], i, encendido, verdaderoX);
+                        al_draw_filled_rectangle(xCoordenada, yCoordenada, xCoordenada + MEDIDA_CUADRO, yCoordenada + MEDIDA_CUADRO, encendido == 0 ? blanco : rojo);
+                        if (linea.x == verdaderoX && linea.y == y)
+                        {
+                            al_draw_filled_rectangle(xCoordenada, yCoordenada, xCoordenada + MEDIDA_CUADRO, yCoordenada + MEDIDA_CUADRO, azul);
+                        }
+                        xCoordenada += MEDIDA_CUADRO;
+                    }
+                    // printf("======\n");
+                    //  printf("En esa pos hay %d", otraCuadricula[y][x]);
+                    //  int indice = y * ancho + x;
+                    //  printf("x=%d,y=%d. El indice es %d\n", x, y, indice);
                 }
-                x = 0;
-                y += MEDIDA_CUADRO;
+                xCoordenada = 0;
+                yCoordenada += MEDIDA_CUADRO;
             }
             al_flip_display();
 
             redraw = false;
+            /*
+                        int i, j;
+                        float x = 0, y = 0;
+                        for (i = 0; i < 5; i++)
+                        {
+                            for (j = 0; j < 5; j++)
+                            {
+                                al_draw_filled_rectangle(x, y, x + MEDIDA_CUADRO, y + MEDIDA_CUADRO, cuadricula[i][j] == 0 ? blanco : rojo);
+                                x += MEDIDA_CUADRO;
+                            }
+                            x = 0;
+                            y += MEDIDA_CUADRO;
+                        }
+                        al_flip_display();
+
+                        redraw = false;
+            */
         }
     }
 

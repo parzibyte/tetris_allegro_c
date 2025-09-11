@@ -21,6 +21,69 @@ struct Tetrimino
     int x, y;
 };
 
+int colisionaFuturo(struct Tetrimino *linea, unsigned char cuad[ALTO_CUADRICULA][ANCHO_CUADRICULA], int modificadorX, int modificadorY)
+{
+
+    for (int indiceChar = 0; indiceChar < CANTIDAD_BYTES_TETRIMINO; indiceChar++)
+    {
+        for (int indiceBit = 0; indiceBit < BITS_EN_UN_BYTE; indiceBit++)
+        {
+            // El índice del char me lo da xd
+            // linea.cuadricula[xd]
+            // Como ya tengo un int solo necesito saber la posición de su bit
+            int encendidoLocal = (linea->cuadricula[indiceChar] >> (MAXIMO_INDICE_BIT_EN_BYTE - indiceBit)) & 1;
+            // Y ya tengo el valor, pero necesito saber en cuál de 4x4 estoy
+            // 0,1,2,3
+            // 4,5,6,7
+            // 8,9,10,11
+            // 12,13,14,15
+            // sumaX y sumaY me dicen la posición
+            // de cada cuadro que conforma
+            // el tetrimino
+            // sumaX ya está expandida a 8 bits por bytes
+            // sumaY no necesita expandirse
+
+            if (encendidoLocal)
+            {
+                int sumaX = linea->x + (indiceBit % 4) + modificadorX;
+                int sumaY = linea->y + (indiceChar * CANTIDAD_BYTES_TETRIMINO) + (indiceBit / 4) + modificadorY;
+                if (sumaX > ANCHO_CUADRICULA * BITS_EN_UN_BYTE - 1)
+                {
+                    return 1;
+                }
+                if (sumaX < 0)
+                {
+                    return 1;
+                }
+
+                if (sumaY < 0)
+                {
+                    return 1;
+                }
+
+                if (sumaY > ALTO_CUADRICULA - 1)
+                {
+                    printf("Sale hacia abajo\n");
+                    return 1;
+                }
+
+                int xParaAcceder = sumaX / BITS_EN_UN_BYTE;
+                /**
+                 * Hasta este punto sumaX y sumaY ya tienen la coordenada completa sumando
+                 * el origen del tetrimino hasta el bit actual
+                 */
+                int indiceBit2 = sumaX % BITS_EN_UN_BYTE;
+                printf("En la cuad[%d][%d] hay un %d\n", sumaY, xParaAcceder, cuad[sumaY][xParaAcceder]);
+                if ((cuad[sumaY][xParaAcceder] >> (MAXIMO_INDICE_BIT_EN_BYTE - indiceBit2)) & 1)
+                {
+                    return 1;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
 int colapsaTetriminoConCuadricula(struct Tetrimino *linea, unsigned char cuad[ALTO_CUADRICULA][ANCHO_CUADRICULA])
 {
     for (int indiceChar = 0; indiceChar < CANTIDAD_BYTES_TETRIMINO; indiceChar++)
@@ -116,7 +179,7 @@ int main()
     204
     */
     // encendidos en cada bit
-    linea.cuadricula[0] = 204;
+    linea.cuadricula[0] = 128;
     linea.cuadricula[1] = 0;
     linea.x = 0;
     linea.y = 0;
@@ -135,7 +198,7 @@ int main()
             if (teclaPresionada == ALLEGRO_KEY_UP)
             {
                 printf("Arriba");
-                if (!colapsaTetriminoConCuadricula(&linea, otraCuadricula))
+                if (!colisionaFuturo(&linea, otraCuadricula, 0, -1))
                 {
                     linea.y--;
                 }
@@ -143,14 +206,14 @@ int main()
             else if (teclaPresionada == ALLEGRO_KEY_DOWN)
             {
                 printf("Abajo");
-                if (!colapsaTetriminoConCuadricula(&linea, otraCuadricula))
+                if (!colisionaFuturo(&linea, otraCuadricula, 0, 1))
                 {
                     linea.y++;
                 }
             }
             else if (teclaPresionada == ALLEGRO_KEY_LEFT)
             {
-                if (!colapsaTetriminoConCuadricula(&linea, otraCuadricula))
+                if (!colisionaFuturo(&linea, otraCuadricula, -1, 0))
                 {
                     printf("Izquierda");
                     linea.x--;
@@ -159,11 +222,13 @@ int main()
             else if (teclaPresionada == ALLEGRO_KEY_RIGHT)
             {
 
-                if (!colapsaTetriminoConCuadricula(&linea, otraCuadricula))
+                if (!colisionaFuturo(&linea, otraCuadricula, 1, 0))
                 {
                     linea.x++;
                     printf("Derecha");
-                }else{
+                }
+                else
+                {
                     printf("Colapsa en la derecha");
                 }
             }
@@ -241,8 +306,8 @@ int main()
                     al_draw_textf(
                         fuente,
                         blanco,
-                        sumaX*MEDIDA_CUADRO,
-                        sumaY*MEDIDA_CUADRO,
+                        sumaX * MEDIDA_CUADRO,
+                        sumaY * MEDIDA_CUADRO,
                         0,
                         "(%d,%d)",
                         sumaX,

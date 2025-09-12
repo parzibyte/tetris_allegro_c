@@ -149,6 +149,31 @@ bool tetriminoColisionaConCuadriculaAlAvanzar(struct Tetrimino *tetrimino, uint8
     return false;
 }
 
+void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA], bool *bandera)
+{
+    if (!tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 1))
+    {
+        tetrimino->y++;
+        *bandera = false;
+    }
+    else
+    {
+
+        // Ya te había avisado que te movieras. Esto significa que no te moviste y por lo tanto toca spawnear
+        // una nueva pieza
+        if (bandera)
+        {
+            // Aquí después copiamos los datos y todo eso. Por ahora solo volvemos a subir la pieza XD
+            tetrimino->y = 0;
+            tetrimino->x = 0;
+        }
+        else
+        {
+            // No puedes bajar pero te doy un tiempo para que te puedas mover
+            *bandera = true;
+        }
+    }
+}
 int main()
 {
     al_init();
@@ -217,6 +242,7 @@ int main()
     linea.cuadricula[1] = 0;
     linea.x = 0;
     linea.y = 0;
+    bool banderaTocoSuelo = false;
 
     while (1)
     {
@@ -230,10 +256,7 @@ int main()
             }
             else if (event.timer.source == timer_bajar_pieza)
             {
-                if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, 0, 1))
-                {
-                    linea.y++;
-                }
+                bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo);
             }
         }
         else if (event.type == ALLEGRO_EVENT_KEY_CHAR)
@@ -249,11 +272,7 @@ int main()
             }
             else if (teclaPresionada == ALLEGRO_KEY_DOWN)
             {
-                printf("Abajo");
-                if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, 0, 1))
-                {
-                    linea.y++;
-                }
+                bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo);
             }
             else if (teclaPresionada == ALLEGRO_KEY_LEFT)
             {

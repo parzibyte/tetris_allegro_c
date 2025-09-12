@@ -87,8 +87,8 @@ bool tetriminoColisionaConCuadriculaAlAvanzar(struct Tetrimino *tetrimino, uint8
                 índice del elemento dentro del arreglo y el índice bit pero no podemos hacer lo siguiente:
                 cuadricula[yEnCuadriculaDespuesDeModificar][xEnByteDeCuadricula][indiceBitDeByteEnCuadricula]
 
-                Así que tenemos que hacer un desplazamiento de bits. 
-                Al bit que nos interesa y que está en el byte dentro de 
+                Así que tenemos que hacer un desplazamiento de bits.
+                Al bit que nos interesa y que está en el byte dentro de
                 cuadricula[yEnCuadriculaDespuesDeModificar][xEnByteDeCuadricula] lo empujamos hasta
                 que esté en el LSB. Luego le hacemos un & con el 1 que también tiene un 1 en su LSB y si el resultado es
                 1 entonces significa que en esa posición sí hay un cuadro de la cuadrícula
@@ -120,7 +120,7 @@ bool tetriminoColisionaConCuadriculaAlAvanzar(struct Tetrimino *tetrimino, uint8
                 00000001
 
                 Recordemos que el AND tiene todos los bits en cero excepto por el LSB. Entonces nos dará siempre
-                un 1 decimal o un 0 decimal. En este caso el resultado fue 1, porque en el índice 4 sí hay un 1. 
+                un 1 decimal o un 0 decimal. En este caso el resultado fue 1, porque en el índice 4 sí hay un 1.
 
                 Otro ejemplo con el 200 pero con el índice en 5. Vamos a desplazarlo (7-5) veces. Originalmente:
 
@@ -157,6 +157,12 @@ int main()
 
     ALLEGRO_TIMER *timer = al_create_timer(1.0 / 30.0);
     ALLEGRO_EVENT_QUEUE *queue = al_create_event_queue();
+
+    /*Timers para bajar pieza automáticamente*/
+    ALLEGRO_TIMER *timer_bajar_pieza = al_create_timer(0.5);
+    al_register_event_source(queue, al_get_timer_event_source(timer_bajar_pieza));
+    al_start_timer(timer_bajar_pieza);
+    /*Terminan timers para bajar pieza automáticamente*/
 
     al_set_new_display_option(ALLEGRO_SAMPLE_BUFFERS, 1, ALLEGRO_SUGGEST);
     al_set_new_display_option(ALLEGRO_SAMPLES, 8, ALLEGRO_SUGGEST);
@@ -218,7 +224,17 @@ int main()
 
         if (event.type == ALLEGRO_EVENT_TIMER)
         {
-            redraw = true;
+            if (event.timer.source == timer)
+            {
+                redraw = true;
+            }
+            else if (event.timer.source == timer_bajar_pieza)
+            {
+                if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, 0, 1))
+                {
+                    linea.y++;
+                }
+            }
         }
         else if (event.type == ALLEGRO_EVENT_KEY_CHAR)
         {

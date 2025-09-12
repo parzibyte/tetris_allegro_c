@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <allegro5/allegro_ttf.h>
+#include <stdbool.h>
 #define ALTURA 800
 #define ANCHURA 1000
 #define MEDIDA_CUADRO 28
@@ -17,108 +18,135 @@
 struct Tetrimino
 {
     // medio byte por línea
-    unsigned char cuadricula[CANTIDAD_BYTES_TETRIMINO];
+    uint8_t cuadricula[CANTIDAD_BYTES_TETRIMINO];
     int x, y;
 };
 
-int colisionaFuturo(struct Tetrimino *linea, unsigned char cuad[ALTO_CUADRICULA][ANCHO_CUADRICULA], int modificadorX, int modificadorY)
+/*
+Recibe un apuntador al tetrimino, la cuadrícula del tetris y dos modificadores x e y.
+La función aumentará las coordenadas del tetrimino a partir de los modificadores simulando un avance y
+después va a devolver true si el tetrimino colisiona con una pared, suelo u otras piezas
+*/
+bool tetriminoColisionaConCuadriculaAlAvanzar(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA], int8_t modificadorX, int8_t modificadorY)
 {
 
+    // Recorremos los 2 bytes del tetrimino
     for (int indiceChar = 0; indiceChar < CANTIDAD_BYTES_TETRIMINO; indiceChar++)
     {
-        for (int indiceBit = 0; indiceBit < BITS_EN_UN_BYTE; indiceBit++)
+        // Dentro recorremos cada bit de cada byte del tetrimino
+        for (int indiceBitTetrimino = 0; indiceBitTetrimino < BITS_EN_UN_BYTE; indiceBitTetrimino++)
         {
-            // El índice del char me lo da xd
-            // linea.cuadricula[xd]
-            // Como ya tengo un int solo necesito saber la posición de su bit
-            int encendidoLocal = (linea->cuadricula[indiceChar] >> (MAXIMO_INDICE_BIT_EN_BYTE - indiceBit)) & 1;
-            // Y ya tengo el valor, pero necesito saber en cuál de 4x4 estoy
-            // 0,1,2,3
-            // 4,5,6,7
-            // 8,9,10,11
-            // 12,13,14,15
-            // sumaX y sumaY me dicen la posición
-            // de cada cuadro que conforma
-            // el tetrimino
-            // sumaX ya está expandida a 8 bits por bytes
-            // sumaY no necesita expandirse
-
-            if (encendidoLocal)
+            // Comprobamos si hay un cuadro del tetrimino, ya que la cuadrícula de 4x4 no siempre está llena en su totalidad
+            bool hayUnCuadroDeTetriminoEnLaCoordenadaActual = (tetrimino->cuadricula[indiceChar] >> (MAXIMO_INDICE_BIT_EN_BYTE - indiceBitTetrimino)) & 1;
+            if (hayUnCuadroDeTetriminoEnLaCoordenadaActual)
             {
-                int sumaX = linea->x + (indiceBit % 4) + modificadorX;
-                int sumaY = linea->y + (indiceChar * CANTIDAD_BYTES_TETRIMINO) + (indiceBit / 4) + modificadorY;
-                if (sumaX > ANCHO_CUADRICULA * BITS_EN_UN_BYTE - 1)
+                // Coordenadas sobre la cuadrícula después de aplicar los modificadores
+                int xEnCuadriculaDespuesDeModificar = tetrimino->x + (indiceBitTetrimino % 4) + modificadorX;
+                int yEnCuadriculaDespuesDeModificar = tetrimino->y + (indiceChar * CANTIDAD_BYTES_TETRIMINO) + (indiceBitTetrimino / 4) + modificadorY;
+                // Límites con anchos y altos de la cuadrícula
+                if (xEnCuadriculaDespuesDeModificar > ANCHO_CUADRICULA * BITS_EN_UN_BYTE - 1)
                 {
-                    return 1;
+                    return true;
                 }
-                if (sumaX < 0)
+                if (xEnCuadriculaDespuesDeModificar < 0)
                 {
-                    return 1;
-                }
-
-                if (sumaY < 0)
-                {
-                    return 1;
+                    return true;
                 }
 
-                if (sumaY > ALTO_CUADRICULA - 1)
+                if (yEnCuadriculaDespuesDeModificar < 0)
                 {
-                    printf("Sale hacia abajo\n");
-                    return 1;
+                    return true;
                 }
 
-                int xParaAcceder = sumaX / BITS_EN_UN_BYTE;
-                /**
-                 * Hasta este punto sumaX y sumaY ya tienen la coordenada completa sumando
-                 * el origen del tetrimino hasta el bit actual
+                if (yEnCuadriculaDespuesDeModificar > ALTO_CUADRICULA - 1)
+                {
+                    return true;
+                }
+
+                /*
+                Hasta este punto ya sé que sí hay un cuadro del tetrimino en la posición actual.
+                También sabemos que las coordenadas son seguras pues no se salen de ningún límite.
+
+                Falta ver si hay un cuadro lleno en la cuadrícula (matriz). Recordemos que usamos un bit
+                por cada cuadro así que primero necesitamos la posición Y, eso lo tenemos
+                en "yEnCuadriculaDespuesDeModificar" así que para acceder a esa línea hacemos un:
+                cuadricula[yEnCuadriculaDespuesDeModificar]
+
+                Eso nos dará la posición del arreglo lineal. Ahora necesitamos saber en cuál de esos valores se
+                encuentra el byte que nos interesa. Para ello dividimos la coordenadaX entre 8 y se redondea
+                automáticamente hacia abajo.
+
+                Si quisiéramos acceder al byte completo hasta ahora haríamos un:
+                cuadricula[yEnCuadriculaDespuesDeModificar][xEnByteDeCuadricula]
+
+                Ya tenemos el byte que nos interesa pero nos falta el bit dentro de ese byte.
+                Para ello hacemos un
+                xEnCuadriculaDespuesDeModificar % 8
+
+                Y ya nos dará el índice del bit. Ya tenemos índice de arreglo dentro de la matriz,
+                índice del elemento dentro del arreglo y el índice bit pero no podemos hacer lo siguiente:
+                cuadricula[yEnCuadriculaDespuesDeModificar][xEnByteDeCuadricula][indiceBitDeByteEnCuadricula]
+
+                Así que tenemos que hacer un desplazamiento de bits. 
+                Al bit que nos interesa y que está en el byte dentro de 
+                cuadricula[yEnCuadriculaDespuesDeModificar][xEnByteDeCuadricula] lo empujamos hasta
+                que esté en el LSB. Luego le hacemos un & con el 1 que también tiene un 1 en su LSB y si el resultado es
+                1 entonces significa que en esa posición sí hay un cuadro de la cuadrícula
+
+                Por ejemplo, supongamos que en cuadricula[yEnCuadriculaDespuesDeModificar][xEnByteDeCuadricula] hay un
+                byte con el valor 200.
+                Su representación es:
+                11001000
+                     ^-----------------------------------------------------------¬
+                Y ahora supongamos que el índiceBitDeByteEnCuadricula es 4       |
+                Lo vamos a desplazar (7 - 4) veces hacia la derecha. Queremos    |
+                el bit número 3 =================================================╝
+
+                Al desplazarlo será:
+                00011001
+                       ^
+                       |___________________________________
+                                                          |
+                Ya tenemos el bit que nos importa en el LSB. Ahora hacemos un AND con
+                el 1 entero que solo tiene un 1 en el LSB y se ve así:
+                00000001
+
+                Hagamos el and
+
+                00000001
+                &
+                00011001
+                ________
+                00000001
+
+                Recordemos que el AND tiene todos los bits en cero excepto por el LSB. Entonces nos dará siempre
+                un 1 decimal o un 0 decimal. En este caso el resultado fue 1, porque en el índice 4 sí hay un 1. 
+
+                Otro ejemplo con el 200 pero con el índice en 5. Vamos a desplazarlo (7-5) veces. Originalmente:
+
+                11001000
+                Lo movemos 2 veces a la derecha:
+                00110010
+                En el LSB hay un 0. Al hacer el AND:
+                00110010
+                &
+                00000001
+                _______
+                00000000
+
+                Y da 0 decimal porque ahí no hay un cuadro que colisione
                  */
-                int indiceBit2 = sumaX % BITS_EN_UN_BYTE;
-                printf("En la cuad[%d][%d] hay un %d\n", sumaY, xParaAcceder, cuad[sumaY][xParaAcceder]);
-                if ((cuad[sumaY][xParaAcceder] >> (MAXIMO_INDICE_BIT_EN_BYTE - indiceBit2)) & 1)
+
+                int xEnByteDeCuadricula = xEnCuadriculaDespuesDeModificar / BITS_EN_UN_BYTE;
+                int indiceBitDeByteEnCuadricula = xEnCuadriculaDespuesDeModificar % BITS_EN_UN_BYTE;
+                if ((cuadricula[yEnCuadriculaDespuesDeModificar][xEnByteDeCuadricula] >> (MAXIMO_INDICE_BIT_EN_BYTE - indiceBitDeByteEnCuadricula)) & 1)
                 {
-                    return 1;
+                    return true;
                 }
             }
         }
     }
-    return 0;
-}
-
-int colapsaTetriminoConCuadricula(struct Tetrimino *linea, unsigned char cuad[ALTO_CUADRICULA][ANCHO_CUADRICULA])
-{
-    for (int indiceChar = 0; indiceChar < CANTIDAD_BYTES_TETRIMINO; indiceChar++)
-    {
-        for (int indiceBit = 0; indiceBit < BITS_EN_UN_BYTE; indiceBit++)
-        {
-            // El índice del char me lo da xd
-            // linea.cuadricula[xd]
-            // Como ya tengo un int solo necesito saber la posición de su bit
-            int encendidoLocal = (linea->cuadricula[indiceChar] >> (MAXIMO_INDICE_BIT_EN_BYTE - indiceBit)) & 1;
-            // Y ya tengo el valor, pero necesito saber en cuál de 4x4 estoy
-            // 0,1,2,3
-            // 4,5,6,7
-            // 8,9,10,11
-            // 12,13,14,15
-            int sumaX = linea->x + (indiceBit % 4);
-            int sumaY = linea->y + (indiceChar * CANTIDAD_BYTES_TETRIMINO) + (indiceBit / 4);
-
-            if (encendidoLocal)
-            {
-                /**
-                 * Hasta este punto sumaX y sumaY ya tienen la coordenada completa sumando
-                 * el origen del tetrimino hasta el bit actual
-                 */
-                int xParaAcceder = sumaX / BITS_EN_UN_BYTE;
-                int indiceBit2 = sumaX % BITS_EN_UN_BYTE;
-                printf("En la cuad[%d][%d] hay un %d\n", sumaY, xParaAcceder, cuad[sumaY][xParaAcceder]);
-                if ((cuad[sumaY][xParaAcceder] >> (MAXIMO_INDICE_BIT_EN_BYTE - indiceBit2)) & 1)
-                {
-                    return 1;
-                }
-            }
-        }
-    }
-    return 0;
+    return false;
 }
 
 int main()
@@ -149,7 +177,7 @@ int main()
     ALLEGRO_COLOR azul = al_map_rgb_f(0, 0, 255);
     ALLEGRO_COLOR verde = al_map_rgb_f(0, 255, 0);
 
-    unsigned char otraCuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA] = {
+    uint8_t otraCuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA] = {
         {0, 0, 0, 0},
         {0, 0, 0, 255},
         {0, 0, 0, 255},
@@ -198,7 +226,7 @@ int main()
             if (teclaPresionada == ALLEGRO_KEY_UP)
             {
                 printf("Arriba");
-                if (!colisionaFuturo(&linea, otraCuadricula, 0, -1))
+                if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, 0, -1))
                 {
                     linea.y--;
                 }
@@ -206,14 +234,14 @@ int main()
             else if (teclaPresionada == ALLEGRO_KEY_DOWN)
             {
                 printf("Abajo");
-                if (!colisionaFuturo(&linea, otraCuadricula, 0, 1))
+                if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, 0, 1))
                 {
                     linea.y++;
                 }
             }
             else if (teclaPresionada == ALLEGRO_KEY_LEFT)
             {
-                if (!colisionaFuturo(&linea, otraCuadricula, -1, 0))
+                if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, -1, 0))
                 {
                     printf("Izquierda");
                     linea.x--;
@@ -222,7 +250,7 @@ int main()
             else if (teclaPresionada == ALLEGRO_KEY_RIGHT)
             {
 
-                if (!colisionaFuturo(&linea, otraCuadricula, 1, 0))
+                if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, 1, 0))
                 {
                     linea.x++;
                     printf("Derecha");

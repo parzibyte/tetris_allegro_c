@@ -13,7 +13,7 @@
 #define BITS_EN_UN_BYTE 8
 #define MAXIMO_INDICE_BIT_EN_BYTE 7
 #define CUADRICULA_TETRIMINO 4
-
+#define TOTAL_TETRIMINOS_DISPONIBLES 5
 Adafruit_SSD1306 display(ANCHO_OLED, ALTO_OLED, &Wire, -1);
 struct Tetrimino
 {
@@ -21,6 +21,69 @@ struct Tetrimino
   uint8_t cuadricula[CANTIDAD_BYTES_TETRIMINO];
   int x, y;
 };
+struct TetriminoParaElegir
+{
+  // medio byte por línea
+  uint8_t cuadricula[CANTIDAD_BYTES_TETRIMINO];
+};
+struct TetriminoParaElegir todasLasPiezasParaElegir[TOTAL_TETRIMINOS_DISPONIBLES];
+void elegirPiezaAleatoria(struct Tetrimino *destino, struct TetriminoParaElegir *piezas)
+{
+  uint8_t indiceAleatorio = random(0, TOTAL_TETRIMINOS_DISPONIBLES);
+  destino->cuadricula[0] = piezas[indiceAleatorio].cuadricula[0];
+  destino->cuadricula[1] = piezas[indiceAleatorio].cuadricula[1];
+  destino->x = 0;
+  destino->y = 0;
+}
+void inicializarPiezas(struct TetriminoParaElegir *piezas)
+{
+  /*
+  Veamos la Z es
+  1100
+  0110
+
+  Que sería 128+64+2+4 = 70 + 128 = 192
+   */
+  piezas[0].cuadricula[0] = 198;
+  piezas[0].cuadricula[1] = 0;
+  /*
+  La L es
+  1000
+  1000
+  1100
+  0000
+  Que sería 128+8=136 en el byte 1
+  Y luego sería 128+64 en el byte 2 = 192
+  */
+  piezas[1].cuadricula[0] = 136;
+  piezas[1].cuadricula[1] = 192;
+  /*
+  Ahora una línea
+  1111
+  0000
+  0000
+  0000
+  Solo sería 128+64+32+16 = 240
+  */
+  piezas[2].cuadricula[0] = 240;
+  piezas[2].cuadricula[1] = 0;
+  /*
+  Ahora el cuadro
+  1100
+  1100
+  0000
+  0000
+  Que sería 128+64+4+8=204
+  */
+  piezas[3].cuadricula[0] = 204;
+  piezas[3].cuadricula[1] = 0;
+  /*
+  Ahora la T
+
+  */
+  piezas[4].cuadricula[0] = 228;
+  piezas[4].cuadricula[1] = 0;
+}
 /**
  * El alto en 40 ya no sirve, lo he dejado en 32 pero no sé si es coincidencia. Deberíamos
  * probar con 33 o similares
@@ -338,8 +401,7 @@ void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRIC
           }
         }
       }
-      tetrimino->y = 0;
-      tetrimino->x = 0;
+      elegirPiezaAleatoria(tetrimino, todasLasPiezasParaElegir);
     }
     else
     {
@@ -379,12 +441,11 @@ const long intervaloAvanzarPiezaEnMs = 500;
 
 void setup()
 {
+  randomSeed(analogRead(3));
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   pinMode(2, INPUT_PULLUP);
-  linea.cuadricula[0] = 228;
-  linea.cuadricula[1] = 0;
-  linea.x = 0;
-  linea.y = 0;
+  inicializarPiezas(todasLasPiezasParaElegir);
+  elegirPiezaAleatoria(&linea, todasLasPiezasParaElegir);
 }
 
 void loop()

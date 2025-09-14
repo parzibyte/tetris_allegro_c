@@ -10,10 +10,11 @@
 #define MEDIDA_CUADRO 28
 #define CANTIDAD_BYTES_TETRIMINO 2
 #define ANCHO_CUADRICULA 4
-#define ALTO_CUADRICULA 4
+#define ALTO_CUADRICULA 10
 #define BITS_EN_UN_BYTE 8
 #define MAXIMO_INDICE_BIT_EN_BYTE 7
 #define CUADRICULA_TETRIMINO 4
+#define TOTAL_TETRIMINOS_DISPONIBLES 5
 
 struct Tetrimino
 {
@@ -21,6 +22,13 @@ struct Tetrimino
     uint8_t cuadricula[CANTIDAD_BYTES_TETRIMINO];
     int x, y;
 };
+struct TetriminoParaElegir
+{
+    // medio byte por línea
+    uint8_t cuadricula[CANTIDAD_BYTES_TETRIMINO];
+};
+
+struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES];
 uint8_t obtenerX(struct Tetrimino *tetrimino, uint8_t indiceBitTetrimino)
 {
     return (tetrimino->x + (indiceBitTetrimino % 4)) / BITS_EN_UN_BYTE;
@@ -34,7 +42,14 @@ uint8_t obtenerIndiceBit(struct Tetrimino *tetrimino, uint8_t indiceBitTetrimino
 {
     return obtenerX(tetrimino, indiceBitTetrimino) % BITS_EN_UN_BYTE;
 }
-
+void elegirPiezaAleatoria(struct Tetrimino *destino)
+{
+    uint8_t indiceAleatorio = rand() % TOTAL_TETRIMINOS_DISPONIBLES;
+    destino->cuadricula[0] = piezas[indiceAleatorio].cuadricula[0];
+    destino->cuadricula[1] = piezas[indiceAleatorio].cuadricula[1];
+    destino->x = 0;
+    destino->y = 0;
+}
 /*
 Recibe un apuntador al tetrimino, la cuadrícula del tetris y dos modificadores x e y.
 La función aumentará las coordenadas del tetrimino a partir de los modificadores simulando un avance y
@@ -199,8 +214,7 @@ void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRIC
                     }
                 }
             }
-            tetrimino->y = 0;
-            tetrimino->x = 0;
+            elegirPiezaAleatoria(tetrimino);
         }
         else
         {
@@ -209,8 +223,10 @@ void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRIC
         }
     }
 }
+
 int main()
 {
+    srand(time(NULL));
     al_init();
     al_init_primitives_addon();
     al_install_keyboard();
@@ -248,7 +264,59 @@ int main()
         {0, 0, 0, 255},
         {0, 0, 0, 255},
         {0, 0, 0, 255},
+        {0, 0, 0, 0},
+        {0, 0, 0, 0},
+        {0, 0, 0, 0},
+        {0, 0, 0, 0},
+        {0, 0, 0, 0},
+        {0, 0, 0, 0},
     };
+    /*
+    Veamos la Z es
+    1100
+    0110
+
+    Que sería 128+64+2+4 = 70 + 128 = 192
+     */
+    piezas[0].cuadricula[0] = 198;
+    piezas[0].cuadricula[1] = 0;
+    /*
+    La L es
+    1000
+    1000
+    1100
+    0000
+    Que sería 128+8=136 en el byte 1
+    Y luego sería 128+64 en el byte 2 = 192
+    */
+    piezas[1].cuadricula[0] = 136;
+    piezas[1].cuadricula[1] = 192;
+    /*
+    Ahora una línea
+    1111
+    0000
+    0000
+    0000
+    Solo sería 128+64+32+16 = 240
+    */
+    piezas[2].cuadricula[0] = 240;
+    piezas[2].cuadricula[1] = 0;
+    /*
+    Ahora el cuadro
+    1100
+    1100
+    0000
+    0000
+    Que sería 128+64+4+8=204
+    */
+    piezas[3].cuadricula[0] = 204;
+    piezas[3].cuadricula[1] = 0;
+    /*
+    Ahora la T
+
+    */
+    piezas[4].cuadricula[0] = 228;
+    piezas[4].cuadricula[1] = 0;
     al_init_font_addon();
     al_init_ttf_addon();
     ALLEGRO_FONT *fuente = al_load_font("arial.ttf", 11, 0);
@@ -273,10 +341,11 @@ int main()
     204
     */
     // encendidos en cada bit
-    linea.cuadricula[0] = 228;
-    linea.cuadricula[1] = 0;
-    linea.x = 0;
-    linea.y = 0;
+    elegirPiezaAleatoria(&linea);
+    // linea.cuadricula[0] = 228;
+    // linea.cuadricula[1] = 0;
+    // linea.x = 0;
+    // linea.y = 0;
     bool banderaTocoSuelo = false;
 
     while (1)

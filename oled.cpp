@@ -30,13 +30,6 @@ struct Tetrimino
 
 #if (MEDIDA_CUADRO == 2)
 uint8_t otraCuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA] = {
-    {0, 0, 0, 0, 0, 0, 0, 255},
-    {0, 0, 0, 0, 0, 0, 0, 255},
-    {0, 0, 0, 0, 0, 0, 0, 255},
-    {0, 0, 0, 0, 0, 0, 0, 255},
-    {0, 0, 0, 0, 0, 0, 0, 255},
-    {0, 0, 0, 0, 0, 0, 0, 255},
-    {0, 0, 0, 0, 0, 0, 0, 255},
     {0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0},
@@ -54,45 +47,132 @@ uint8_t otraCuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA] = {
     {0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 255, 255, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 255, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 255, 0, 255, 0, 0, 0, 0},
-    {0, 0, 255, 255, 255, 255, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
 };
 #elif (MEDIDA_CUADRO == 4)
 uint8_t otraCuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA] = {
-  {0,0,0,0,},
-  {0,0,0,255,},
-  {0,0,0,0,},
-  {0,0,0,255,},
-  {0,0,0,0,},
-  {0,0,0,255,},
-  {0,0,0,0,},
-  {0,0,0,255,},
-  {0,0,0,0,},
-  {0,0,0,255,},
-  {0,0,0,0,},
-  {0,0,0,255,},
-  {0,0,255,0,},
-  {255,255,255,255,},
-  {0,0,0,0,},
-  {255,255,255,255,},
+    {
+        0,
+        0,
+        0,
+        0,
+    },
+    {
+        0,
+        0,
+        0,
+        0,
+    },
+    {
+        0,
+        0,
+        0,
+        0,
+    },
+    {
+        0,
+        0,
+        0,
+        0,
+    },
+    {
+        0,
+        0,
+        0,
+        0,
+    },
+    {
+        0,
+        0,
+        0,
+        0,
+    },
+    {
+        0,
+        0,
+        0,
+        0,
+    },
+    {
+        0,
+        0,
+        0,
+        0,
+    },
+    {
+        0,
+        0,
+        0,
+        0,
+    },
+    {
+        0,
+        0,
+        0,
+        0,
+    },
+    {
+        0,
+        0,
+        0,
+        0,
+    },
+    {
+        0,
+        0,
+        0,
+        0,
+    },
+    {
+        0,
+        0,
+        0,
+        0,
+    },
+    {
+        0,
+        0,
+        0,
+        0,
+    },
+    {
+        0,
+        0,
+        0,
+        0,
+    },
+    {
+        0,
+        0,
+        0,
+        0,
+    },
 };
 #else
 uint8_t otraCuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA] = {
-  {0,255},
-  {0,0},
-  {0,255},
-  {0,0},
-  {0,255},
-  {0,0},
-  {0,255},
-  {255,0},
-  
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+
 };
 #endif
 
@@ -223,9 +303,56 @@ bool tetriminoColisionaConCuadriculaAlAvanzar(struct Tetrimino *tetrimino, uint8
   return false;
 }
 
+void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA], bool *bandera)
+{
+  if (!tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 1))
+  {
+    tetrimino->y++;
+    *bandera = false;
+  }
+  else
+  {
+
+    // Ya te había avisado que te movieras. Esto significa que no te moviste y por lo tanto toca spawnear
+    // una nueva pieza
+    if (bandera)
+    {
+      // Aquí después copiamos los datos y todo eso. Por ahora solo volvemos a subir la pieza XD
+      // Ok entonces recorremos de igual manera el tetrimino
+      // Recorremos los 2 bytes del tetrimino
+      for (int indiceChar = 0; indiceChar < CANTIDAD_BYTES_TETRIMINO; indiceChar++)
+      {
+        // Dentro recorremos cada bit de cada byte del tetrimino
+        for (int indiceBitTetrimino = 0; indiceBitTetrimino < BITS_EN_UN_BYTE; indiceBitTetrimino++)
+        {
+          // Comprobamos si hay un cuadro del tetrimino, ya que la cuadrícula de 4x4 no siempre está llena en su totalidad
+          bool hayUnCuadroDeTetriminoEnLaCoordenadaActual = (tetrimino->cuadricula[indiceChar] >> (MAXIMO_INDICE_BIT_EN_BYTE - indiceBitTetrimino)) & 1;
+          if (hayUnCuadroDeTetriminoEnLaCoordenadaActual)
+          {
+            // Coordenadas sobre la cuadrícula después de aplicar los modificadores
+            int xEnCuadriculaDespuesDeModificar = tetrimino->x + (indiceBitTetrimino % 4);
+            int yEnCuadriculaDespuesDeModificar = tetrimino->y + (indiceChar * CANTIDAD_BYTES_TETRIMINO) + (indiceBitTetrimino / 4);
+            int xEnByteDeCuadricula = xEnCuadriculaDespuesDeModificar / BITS_EN_UN_BYTE;
+            int indiceBitDeByteEnCuadricula = xEnCuadriculaDespuesDeModificar % BITS_EN_UN_BYTE;
+            cuadricula[yEnCuadriculaDespuesDeModificar][xEnByteDeCuadricula] = cuadricula[yEnCuadriculaDespuesDeModificar][xEnByteDeCuadricula] | (1 << (MAXIMO_INDICE_BIT_EN_BYTE - indiceBitDeByteEnCuadricula));
+          }
+        }
+      }
+      tetrimino->y = 0;
+      tetrimino->x = 0;
+    }
+    else
+    {
+      // No puedes bajar pero te doy un tiempo para que te puedas mover
+      *bandera = true;
+    }
+  }
+}
+
 const int pinX = 0,
           pinY = 1;
 struct Tetrimino linea;
+bool banderaTocoSuelo = false;
 // Linea acostada es 240 porque necesitamos encendidos los primeros 4 bits
 // Línea vertical sería 136 y 136 porque necesitamos el bit 1 y 4 (128 y 8)
 /*
@@ -246,6 +373,9 @@ Primer byte: 11100100
 204
 */
 // encendidos en cada bit
+unsigned long ultimosMilisegundos = 0;
+// TODO: tal vez no deba ser constante porque debemos reducirlo entre mayor dificultad
+const long intervaloAvanzarPiezaEnMs = 500;
 
 void setup()
 {
@@ -265,6 +395,12 @@ void loop()
       valorY = analogRead(pinY);
 
   bool presionado = digitalRead(2);
+  unsigned long milisegundosActuales = millis();
+  if (milisegundosActuales - ultimosMilisegundos >= intervaloAvanzarPiezaEnMs)
+  {
+    bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo);
+    ultimosMilisegundos = milisegundosActuales;
+  }
   // Derecha
   if (valorX > 600)
   {
@@ -272,14 +408,6 @@ void loop()
     if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, 1, 0))
     {
       linea.x++;
-    }
-  }
-  // Arriba
-  if (valorY > 600)
-  {
-    if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, 0, -1))
-    {
-      linea.y--;
     }
   }
   // Izquierda
@@ -294,10 +422,7 @@ void loop()
   // Abajo
   if (valorY < 400 || !presionado)
   {
-    if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, 0, 1))
-    {
-      linea.y++;
-    }
+    bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo);
   }
 
   // Dibujamos toda la cuadrícula...
@@ -312,13 +437,13 @@ void loop()
         int verdaderoX = (x * BITS_EN_UN_BYTE) + i;
         if (encendido)
         {
-          display.drawRect(verdaderoX * MEDIDA_CUADRO, y * MEDIDA_CUADRO,
+          display.fillRect(verdaderoX * MEDIDA_CUADRO, y * MEDIDA_CUADRO,
                            MEDIDA_CUADRO, MEDIDA_CUADRO, SSD1306_WHITE);
         }
         else
         {
 
-          display.drawRect(verdaderoX * MEDIDA_CUADRO, y * MEDIDA_CUADRO,
+          display.fillRect(verdaderoX * MEDIDA_CUADRO, y * MEDIDA_CUADRO,
                            MEDIDA_CUADRO, MEDIDA_CUADRO, SSD1306_BLACK);
         }
       }
@@ -347,7 +472,7 @@ void loop()
       if (encendidoLocal)
       {
 
-        display.drawRect(sumaX * MEDIDA_CUADRO, sumaY * MEDIDA_CUADRO,
+        display.fillRect(sumaX * MEDIDA_CUADRO, sumaY * MEDIDA_CUADRO,
                          MEDIDA_CUADRO, MEDIDA_CUADRO, SSD1306_WHITE);
       }
     }

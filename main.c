@@ -21,6 +21,19 @@ struct Tetrimino
     uint8_t cuadricula[CANTIDAD_BYTES_TETRIMINO];
     int x, y;
 };
+uint8_t obtenerX(struct Tetrimino *tetrimino, uint8_t indiceBitTetrimino)
+{
+    return (tetrimino->x + (indiceBitTetrimino % 4)) / BITS_EN_UN_BYTE;
+}
+uint8_t obtenerY(struct Tetrimino *tetrimino, uint8_t indiceBitTetrimino, uint8_t indiceChar)
+{
+    return tetrimino->y + (indiceChar * CANTIDAD_BYTES_TETRIMINO) + (indiceBitTetrimino / 4);
+}
+
+uint8_t obtenerIndiceBit(struct Tetrimino *tetrimino, uint8_t indiceBitTetrimino)
+{
+    return obtenerX(tetrimino, indiceBitTetrimino) % BITS_EN_UN_BYTE;
+}
 
 /*
 Recibe un apuntador al tetrimino, la cuadrícula del tetris y dos modificadores x e y.
@@ -136,6 +149,7 @@ bool tetriminoColisionaConCuadriculaAlAvanzar(struct Tetrimino *tetrimino, uint8
 
                 Y da 0 decimal porque ahí no hay un cuadro que colisione
                  */
+                // Empieza prueba---
 
                 int xEnByteDeCuadricula = xEnCuadriculaDespuesDeModificar / BITS_EN_UN_BYTE;
                 int indiceBitDeByteEnCuadricula = xEnCuadriculaDespuesDeModificar % BITS_EN_UN_BYTE;
@@ -143,6 +157,7 @@ bool tetriminoColisionaConCuadriculaAlAvanzar(struct Tetrimino *tetrimino, uint8
                 {
                     return true;
                 }
+                // Termina prueba---
             }
         }
     }
@@ -164,6 +179,26 @@ void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRIC
         if (bandera)
         {
             // Aquí después copiamos los datos y todo eso. Por ahora solo volvemos a subir la pieza XD
+            // Ok entonces recorremos de igual manera el tetrimino
+            // Recorremos los 2 bytes del tetrimino
+            for (int indiceChar = 0; indiceChar < CANTIDAD_BYTES_TETRIMINO; indiceChar++)
+            {
+                // Dentro recorremos cada bit de cada byte del tetrimino
+                for (int indiceBitTetrimino = 0; indiceBitTetrimino < BITS_EN_UN_BYTE; indiceBitTetrimino++)
+                {
+                    // Comprobamos si hay un cuadro del tetrimino, ya que la cuadrícula de 4x4 no siempre está llena en su totalidad
+                    bool hayUnCuadroDeTetriminoEnLaCoordenadaActual = (tetrimino->cuadricula[indiceChar] >> (MAXIMO_INDICE_BIT_EN_BYTE - indiceBitTetrimino)) & 1;
+                    if (hayUnCuadroDeTetriminoEnLaCoordenadaActual)
+                    {
+                        // Coordenadas sobre la cuadrícula después de aplicar los modificadores
+                        int xEnCuadriculaDespuesDeModificar = tetrimino->x + (indiceBitTetrimino % 4);
+                        int yEnCuadriculaDespuesDeModificar = tetrimino->y + (indiceChar * CANTIDAD_BYTES_TETRIMINO) + (indiceBitTetrimino / 4);
+                        int xEnByteDeCuadricula = xEnCuadriculaDespuesDeModificar / BITS_EN_UN_BYTE;
+                        int indiceBitDeByteEnCuadricula = xEnCuadriculaDespuesDeModificar % BITS_EN_UN_BYTE;
+                        cuadricula[yEnCuadriculaDespuesDeModificar][xEnByteDeCuadricula] = cuadricula[yEnCuadriculaDespuesDeModificar][xEnByteDeCuadricula] | (1 << (MAXIMO_INDICE_BIT_EN_BYTE - indiceBitDeByteEnCuadricula));
+                    }
+                }
+            }
             tetrimino->y = 0;
             tetrimino->x = 0;
         }
@@ -238,7 +273,7 @@ int main()
     204
     */
     // encendidos en cada bit
-    linea.cuadricula[0] = 128;
+    linea.cuadricula[0] = 228;
     linea.cuadricula[1] = 0;
     linea.x = 0;
     linea.y = 0;
@@ -256,13 +291,13 @@ int main()
             }
             else if (event.timer.source == timer_bajar_pieza)
             {
-                bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo);
+                // bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo);
             }
         }
         else if (event.type == ALLEGRO_EVENT_KEY_CHAR)
         {
             int teclaPresionada = event.keyboard.keycode;
-            if (teclaPresionada == ALLEGRO_KEY_UP)
+            if (teclaPresionada == ALLEGRO_KEY_K)
             {
                 printf("Arriba");
                 if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, 0, -1))
@@ -270,11 +305,11 @@ int main()
                     linea.y--;
                 }
             }
-            else if (teclaPresionada == ALLEGRO_KEY_DOWN)
+            else if (teclaPresionada == ALLEGRO_KEY_J)
             {
                 bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo);
             }
-            else if (teclaPresionada == ALLEGRO_KEY_LEFT)
+            else if (teclaPresionada == ALLEGRO_KEY_H)
             {
                 if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, -1, 0))
                 {
@@ -282,7 +317,7 @@ int main()
                     linea.x--;
                 }
             }
-            else if (teclaPresionada == ALLEGRO_KEY_RIGHT)
+            else if (teclaPresionada == ALLEGRO_KEY_L)
             {
 
                 if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, 1, 0))

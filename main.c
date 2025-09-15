@@ -9,8 +9,8 @@
 #define ANCHURA 1000
 #define MEDIDA_CUADRO 28
 #define CANTIDAD_BYTES_TETRIMINO 2
-#define ANCHO_CUADRICULA 4
-#define ALTO_CUADRICULA 4
+#define ANCHO_CUADRICULA 2
+#define ALTO_CUADRICULA 8
 #define BITS_EN_UN_BYTE 8
 #define MAXIMO_INDICE_BIT_EN_BYTE 7
 #define CUADRICULA_TETRIMINO 4
@@ -45,7 +45,6 @@ uint8_t obtenerIndiceBit(struct Tetrimino *tetrimino, uint8_t indiceBitTetrimino
 void elegirPiezaAleatoria(struct Tetrimino *destino)
 {
     uint8_t indiceAleatorio = rand() % TOTAL_TETRIMINOS_DISPONIBLES;
-    indiceAleatorio = 3;
     destino->cuadricula[0] = piezas[indiceAleatorio].cuadricula[0];
     destino->cuadricula[1] = piezas[indiceAleatorio].cuadricula[1];
     destino->x = 0;
@@ -180,6 +179,10 @@ bool tetriminoColisionaConCuadriculaAlAvanzar(struct Tetrimino *tetrimino, uint8
     return false;
 }
 
+/*
+Devuelve el primer índice de la fila llena comenzando desde abajo (desde ALTO_CUADRICULA - 1)
+Si no hay ninguna fila llena devuelve -1
+*/
 int8_t indiceFilaLlena(uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA])
 {
     for (int y = ALTO_CUADRICULA - 1; y >= 0; y--)
@@ -197,136 +200,18 @@ int8_t indiceFilaLlena(uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA])
     return -1;
 }
 
-void bajarXD(int8_t posibleIndice, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA])
+void limpiarFilaYBajarFilasSuperiores(int8_t indiceFila, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA])
 {
-    printf("Bajamos en indice %d\n", posibleIndice);
-    // TODO: optimizar con un memset
-    for (uint8_t x = 0; x < ANCHO_CUADRICULA; x++)
+    // Bajamos las superiores
+    for (; indiceFila > 0; indiceFila--)
     {
-        cuadricula[posibleIndice][x] = 0;
+        memcpy(cuadricula[indiceFila], cuadricula[indiceFila - 1], sizeof(cuadricula[indiceFila]));
     }
-    printf("Fila limpiada\n");
-    // Empezamos a bajar todo desde el inicio hasta
-    // donde acabamos de eliminar
-    // TODO: tal vez y no debería ser >= 0 sino hasta la primera fila vacía
-    // Hasta aquí ya sabemos que una línea ya está libre, así que sabemos que podemos
-    // limpiar la de hasta arriba, pero espera porque puede que ahí también haya contenido
-    // for(uint8_t otroY = 0;)
-    uint8_t y = posibleIndice;
-    for (y = posibleIndice; y > 0; y--)
-    {
-        printf("y=%d,y-1=%d\n", y, y - 1);
-        // memset(cuadricula[0],0,sizeof(cuadricula[0]));
-        // TODO: aquí no sé si sizeof es correcto
-        // TODO 2: qué le pasa al cero cuando pasa esto?
-
-        /*
-        Cálculos sobre la matriz. La que da error es esta, simulemos
-        porque me parece que algo pasa con el cero.
-        Primero la matriz está así:
-            {63,255,255,255,},                                                  |
-            {63, 255,255,255,},                                                 |
-            {255, 255, 255, 255},                                               |
-            {255, 255, 255, 255}, -----------------------------------------------
-
-            Tan pronto bajo el cuadro, los 63 se convierten en 255
-        Yo bajo el cuadro, entonces me dice que la fila llena es la del índice 3
-                                                                                |
-            {255,255,255,255,},                                                  |
-            {255, 255,255,255,},                                                 |
-            {255, 255, 255, 255},                                               |
-            {255, 255, 255, 255}, -----------------------------------------------
-
-            Así que limpiamos esa fila:
-
-            {255,255,255,255,},
-            {255, 255,255,255,},
-            {255, 255, 255, 255},
-            {0, 0, 0, 0},
-
-            Y luego empezamos a bajar las demás. De modo que a la 3 la intercambiamos con la 2, la 2 con la 1, la 1 con la 0
-
-            {255,255,255,255,},
-            {255,255,255,255,},
-            {255, 255,255,255,},
-            {255, 255, 255, 255},
-
-
-            Y creo que aquí está el problema. La del índice 0 no se toca, pero por ley debería
-            dejarse en 0 porque ya bajamos al menos una línea así que luego de intercambiar, ponemos la del índice
-            0 en ceros:
-
-            {0,0,0,0},
-            {255,255,255,255,},
-            {255, 255,255,255,},
-            {255, 255, 255, 255},
-            // La siguiente vez va a ser igual, el índice será el 3, así que limpiamos esa:
-
-            {0,0,0,0},
-            {255,255,255,255,},
-            {255, 255,255,255,},
-            {0, 0, 0, 0},
-
-            Y bajamos:
-
-            {0,0,0,0},
-            {0,0,0,0},
-            {255,255,255,255,},
-            {255, 255,255,255,},
-
-            Luego establecemos el índice 0 en ceros (cosa que ya está pero bueno)
-
-            {0,0,0,0},
-            {0,0,0,0},
-            {255,255,255,255,},
-            {255, 255,255,255,},
-
-            La siguiente vez, de nuevo, el índice será 3, así que limpiamos:
-
-            {0,0,0,0},
-            {0,0,0,0},
-            {255,255,255,255,},
-            {0, 0, 0, 0},
-
-            Bajamos:
-
-            {0,0,0,0},
-            {0,0,0,0},
-            {0,0,0,0},
-            {255,255,255,255,},
-
-            Otra vez establecemos el índice en 0, cosa que ya está. La siguiente vez
-            el índice será 3 de nuevo. Limpiamos:
-
-            {0,0,0,0},
-            {0,0,0,0},
-            {0,0,0,0},
-            {0,0,0,0},
-
-            Y aunque bajemos o lo que sea, ya no importa, ya la siguiente vez
-            el índice será -1
-
-            Así que solo necesitamos establecerlo cuando llegamos hasta el índice 1. De ahí no hace falta
-
-
-        */
-        memcpy(cuadricula[y], cuadricula[y - 1], sizeof(cuadricula[y]));
-        // cuadricula[y] = cuadricula[y-1];
-    }
-    // Limpiamos solamente cuando llegamos hasta arriba
-    if (y == 0)
-    {
-
-        for (uint8_t x = 0; x < ANCHO_CUADRICULA; x++)
-        {
-            cuadricula[0][x] = 0;
-        }
-    }
-
-    // cuadricula[posibleIndice] = todo un arreglo vacío
+    // Y estamos seguros de que hasta arriba (y=0) se quedó una fila disponible, la dejamos en ceros
+    memset(cuadricula[0], 0, sizeof(cuadricula[0]));
 }
 
-void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA], bool *bandera)
+void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA], bool *bandera, unsigned long *puntajeGlobal)
 {
     if (!tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 1))
     {
@@ -361,21 +246,30 @@ void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRIC
                     }
                 }
             }
-            // Bueno ahora vamos a ver si hay una línea llena.
-            // whil
+            // Limpiar filas y bajar filas superiores hasta que ya no haya filas llenas
+            /*
+            Aquí puede que haya un "tetris", entonces calculamos un puntaje o cosas de esas, así que
+            calculamos el puntaje
+            */
+            uint8_t lineasEliminadasConsecutivamente = 0;
             while (1)
             {
-                int8_t posibleIndice = indiceFilaLlena(cuadricula);
-                printf("en while(1) posible indice es %d\n", posibleIndice);
-                if (posibleIndice == -1)
+                int8_t posibleIndiceFilaLlena = indiceFilaLlena(cuadricula);
+                // No hay filas llenas. Nada que limpiar
+                if (posibleIndiceFilaLlena == -1)
                 {
+                    printf("Líneas consecutivas: %d\n", lineasEliminadasConsecutivamente);
+                    puntajeGlobal += lineasEliminadasConsecutivamente;
+                    lineasEliminadasConsecutivamente = 0;
                     break;
                 }
                 else
                 {
-                    bajarXD(posibleIndice, cuadricula);
+                    limpiarFilaYBajarFilasSuperiores(posibleIndiceFilaLlena, cuadricula);
+                    lineasEliminadasConsecutivamente++;
                 }
             }
+            printf("Puntaje actual: %d\n", puntajeGlobal);
             elegirPiezaAleatoria(tetrimino);
         }
         else
@@ -422,26 +316,15 @@ int main()
     ALLEGRO_COLOR verde = al_map_rgb_f(0, 255, 0);
 
     uint8_t otraCuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA] = {
-        {
-            63,
-            255,
-            255,
-            255,
-        },
-        {
-            63,
-            255,
-            255,
-            255,
-        },
-        {255, 255, 255, 255},
-        {255, 255, 255, 255},
-        /*
-        {0, 0,0,0,},
-        {0, 63,0,0,},
-        {63, 255, 255, 255},
-        {63, 255, 255, 255},
-*/
+        {0,0},
+        {0,0},
+        {0,0},
+        {0,0},
+        {0,0},
+        {0,0},
+        {0,0},
+        {0,0},
+       
     };
     /*
     Veamos la Z es
@@ -519,6 +402,7 @@ int main()
     // linea.x = 0;
     // linea.y = 0;
     bool banderaTocoSuelo = false;
+    unsigned long puntajeGlobal = 0;
 
     while (1)
     {
@@ -532,7 +416,7 @@ int main()
             }
             else if (event.timer.source == timer_bajar_pieza)
             {
-                // bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo);
+                bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal);
             }
         }
         else if (event.type == ALLEGRO_EVENT_KEY_CHAR)
@@ -548,7 +432,7 @@ int main()
             }
             else if (teclaPresionada == ALLEGRO_KEY_J)
             {
-                bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo);
+                bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal);
             }
             else if (teclaPresionada == ALLEGRO_KEY_H)
             {

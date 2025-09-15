@@ -10,7 +10,7 @@
 #define MEDIDA_CUADRO 28
 #define CANTIDAD_BYTES_TETRIMINO 2
 #define ANCHO_CUADRICULA 2
-#define ALTO_CUADRICULA 8
+#define ALTO_CUADRICULA 16
 #define BITS_EN_UN_BYTE 8
 #define MAXIMO_INDICE_BIT_EN_BYTE 7
 #define CUADRICULA_TETRIMINO 4
@@ -29,6 +29,28 @@ struct TetriminoParaElegir
 };
 
 struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES];
+void rotar90CW(uint8_t cuad[2]) {
+    uint16_t out = 0;
+    for(int y=0; y<4; y++) {
+        for(int x=0; x<4; x++) {
+            int bit;
+            if(y < 2)
+                bit = (cuad[0] >> (7 - (y*4 + x))) & 1;
+            else
+                bit = (cuad[1] >> (7 - ((y-2)*4 + x))) & 1;
+
+            int nx = y;
+            int ny = 3 - x;
+            if(ny < 2)
+                out |= bit << (15 - (ny*4 + nx)); 
+            else
+                out |= bit << (15 - (ny*4 + nx)); 
+        }
+    }
+
+    cuad[0] = out >> 8;
+    cuad[1] = out & 0xFF;
+}
 uint8_t obtenerX(struct Tetrimino *tetrimino, uint8_t indiceBitTetrimino)
 {
     return (tetrimino->x + (indiceBitTetrimino % 4)) / BITS_EN_UN_BYTE;
@@ -259,7 +281,7 @@ void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRIC
                 if (posibleIndiceFilaLlena == -1)
                 {
                     printf("Líneas consecutivas: %d\n", lineasEliminadasConsecutivamente);
-                    puntajeGlobal += lineasEliminadasConsecutivamente;
+                    *puntajeGlobal += lineasEliminadasConsecutivamente;
                     lineasEliminadasConsecutivamente = 0;
                     break;
                 }
@@ -291,7 +313,7 @@ int main()
     ALLEGRO_EVENT_QUEUE *queue = al_create_event_queue();
 
     /*Timers para bajar pieza automáticamente*/
-    ALLEGRO_TIMER *timer_bajar_pieza = al_create_timer(0.5);
+    ALLEGRO_TIMER *timer_bajar_pieza = al_create_timer(1);
     al_register_event_source(queue, al_get_timer_event_source(timer_bajar_pieza));
     al_start_timer(timer_bajar_pieza);
     /*Terminan timers para bajar pieza automáticamente*/
@@ -316,15 +338,23 @@ int main()
     ALLEGRO_COLOR verde = al_map_rgb_f(0, 255, 0);
 
     uint8_t otraCuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA] = {
-        {0,0},
-        {0,0},
-        {0,0},
-        {0,0},
-        {0,0},
-        {0,0},
-        {0,0},
-        {0,0},
-       
+        {0, 0},
+        {0, 0},
+        {0, 0},
+        {0, 0},
+        {0, 0},
+        {0, 0},
+        {0, 0},
+        {0, 0},
+        {0, 0},
+        {0, 0},
+        {0, 0},
+        {0, 0},
+        {0, 0},
+        {0, 0},
+        {0, 0},
+        {0, 0},
+
     };
     /*
     Veamos la Z es
@@ -454,6 +484,10 @@ int main()
                 {
                     printf("Colapsa en la derecha");
                 }
+            }
+            else if (teclaPresionada == ALLEGRO_KEY_SPACE)
+            {
+                rotar90CW(linea.cuadricula);
             }
         }
         else if ((event.type == ALLEGRO_EVENT_DISPLAY_CLOSE))

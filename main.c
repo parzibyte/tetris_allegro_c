@@ -324,7 +324,7 @@ void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRIC
                     lineasEliminadasConsecutivamente++;
                 }
             }
-            printf("Puntaje actual: %d\n", puntajeGlobal);
+            printf("Puntaje actual: %lu\n", *puntajeGlobal);
             elegirPiezaAleatoria(tetrimino);
         }
         else

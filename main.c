@@ -20,41 +20,94 @@
 
 struct Tetrimino
 {
-    // medio byte por línea
     uint16_t cuadricula;
     uint8_t x, y;
 };
 struct TetriminoParaElegir
 {
-    // medio byte por línea
     uint16_t cuadricula;
 };
 
 struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES];
-void rotar90CW(uint8_t cuad[2])
+uint16_t rotar90CW(uint16_t pieza)
 {
-    uint16_t out = 0;
+    // (x', y') = ( y, 3 - x )
+    uint16_t rotado = 0;
     for (int y = 0; y < 4; y++)
     {
         for (int x = 0; x < 4; x++)
         {
-            int bit;
-            if (y < 2)
-                bit = (cuad[0] >> (7 - (y * 4 + x))) & 1;
-            else
-                bit = (cuad[1] >> (7 - ((y - 2) * 4 + x))) & 1;
-
-            int nx = y;
-            int ny = 3 - x;
-            if (ny < 2)
-                out |= bit << (15 - (ny * 4 + nx));
-            else
-                out |= bit << (15 - (ny * 4 + nx));
+            int bit = (pieza >> (MAXIMO_INDICE_BIT_EN_UINT16 - (y * 4 + x))) & 1;
+            int xPrima = y;
+            int yPrima = 3 - x;
+            rotado |= bit << (MAXIMO_INDICE_BIT_EN_UINT16 - (yPrima * 4 + xPrima));
         }
     }
+    /*
+    Recordemos que 0xf000 es
+    1111
+    0000
+    0000
+    0000
 
-    cuad[0] = out >> 8;
-    cuad[1] = out & 0xFF;
+    Y le hacemos un AND con la pieza rotada. Va a devolver
+    0 siempre que la pieza  tenga únicamente ceros en los primeros 4 bits
+
+    Por ejemplo, tenemos la pieza
+    0100
+    0110
+    0010
+    0000
+
+    Hacemos un AND:
+    0100011000100000
+    &
+    1111000000000000
+    El resultado es 0100000000000000, mismo que es distinto a 0000000000000000, es correcto
+    porque no tiene filas vacías al inicio.
+
+    Pero ahora veamos con la siguiente pieza:
+
+    0000
+    0110
+    0011
+    0000
+
+    Le hacemos un AND:
+    0000011000110000
+    &
+    1111000000000000
+
+    El resultado es
+    0000000000000000
+
+    Lo cual es exactamente a 0
+
+    Entonces cuando se cumple esta condición desplazamos 4 bits a la izquierda,
+    lo que es como subir la pieza
+
+
+     */
+    while ((rotado & 0xF000) == 0)
+    {
+        rotado <<= 4;
+    }
+    /*
+        0x8888 sería:
+        1000
+        1000
+        1000
+        1000
+
+        Y hacemos lo mismo pero ahora para arrimar
+        la pieza a la izquierda
+    */
+
+    while ((rotado & 0x8888) == 0)
+    {
+        rotado <<= 1;
+    }
+    return rotado;
 }
 void elegirPiezaAleatoria(struct Tetrimino *destino)
 {
@@ -62,6 +115,63 @@ void elegirPiezaAleatoria(struct Tetrimino *destino)
     destino->cuadricula = piezas[indiceAleatorio].cuadricula;
     destino->x = 0;
     destino->y = 0;
+}
+
+/*
+Recibe un apuntador al tetrimino y la cuadrícula del tetris
+*/
+bool tetriminoColisionaConCuadriculaAlRotar(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA])
+{
+    /*
+    Nuevo código porque usamos uint16_t
+    */
+    for (uint8_t indiceBit = 0; indiceBit < BITS_EN_UINT16; indiceBit++)
+    {
+        // Primero rotamos. No usaremos tetrimino->cuadricula sino lo rotado
+        uint16_t rotado = rotar90CW(tetrimino->cuadricula);
+
+        bool hayUnCuadroDeTetriminoEnLaCoordenadaActual = (rotado >> (MAXIMO_INDICE_BIT_EN_UINT16 - indiceBit)) & 1;
+        if (!hayUnCuadroDeTetriminoEnLaCoordenadaActual)
+        {
+            continue;
+        }
+        // Llegados aquí sabemos que el "continue" no se ejecutó y que SÍ hay un tetrimino
+
+        // Coordenadas sobre la cuadrícula después de aplicar los modificadores
+        uint8_t xRelativoDentroDeCuadricula = indiceBit % BITS_POR_FILA_PARA_TETRIMINO;
+        uint8_t YRelativoDentroDeCuadricula = indiceBit / BITS_POR_FILA_PARA_TETRIMINO;
+        int xEnCuadriculaDespuesDeModificar = tetrimino->x + xRelativoDentroDeCuadricula;
+        int yEnCuadriculaDespuesDeModificar = tetrimino->y + YRelativoDentroDeCuadricula;
+        // Límites con anchos y altos de la cuadrícula
+        if (xEnCuadriculaDespuesDeModificar > ANCHO_CUADRICULA * BITS_EN_UN_BYTE - 1)
+        {
+            return true;
+        }
+        if (xEnCuadriculaDespuesDeModificar < 0)
+        {
+            return true;
+        }
+
+        if (yEnCuadriculaDespuesDeModificar < 0)
+        {
+            return true;
+        }
+
+        if (yEnCuadriculaDespuesDeModificar > ALTO_CUADRICULA - 1)
+        {
+            return true;
+        }
+        /*
+        Hasta este punto las coordenadas ya son seguras y ya las tenemos simuladas con el avance
+        */
+        int xEnByteDeCuadricula = xEnCuadriculaDespuesDeModificar / BITS_EN_UN_BYTE;
+        int indiceBitDeByteEnCuadricula = xEnCuadriculaDespuesDeModificar % BITS_EN_UN_BYTE;
+        if ((cuadricula[yEnCuadriculaDespuesDeModificar][xEnByteDeCuadricula] >> (MAXIMO_INDICE_BIT_EN_BYTE - indiceBitDeByteEnCuadricula)) & 1)
+        {
+            return true;
+        }
+    }
+    return false;
 }
 /*
 Recibe un apuntador al tetrimino, la cuadrícula del tetris y dos modificadores x e y.
@@ -404,7 +514,10 @@ int main()
             }
             else if (teclaPresionada == ALLEGRO_KEY_SPACE)
             {
-                // rotar90CW(linea.cuadricula);
+                if (!tetriminoColisionaConCuadriculaAlRotar(&linea, otraCuadricula))
+                {
+                    linea.cuadricula = rotar90CW(linea.cuadricula);
+                }
             }
         }
         else if ((event.type == ALLEGRO_EVENT_DISPLAY_CLOSE))

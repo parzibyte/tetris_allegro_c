@@ -17,7 +17,7 @@
 #define CUADRICULA_TETRIMINO 4
 #define TOTAL_TETRIMINOS_DISPONIBLES 5
 #define BITS_POR_FILA_PARA_TETRIMINO 4
-#define MITAD_CUADRICULA_X  ANCHO_CUADRICULA * BITS_EN_UN_BYTE / 2 - (BITS_POR_FILA_PARA_TETRIMINO / 2);
+#define MITAD_CUADRICULA_X ANCHO_CUADRICULA *BITS_EN_UN_BYTE / 2 - (BITS_POR_FILA_PARA_TETRIMINO / 2);
 
 struct Tetrimino
 {
@@ -276,7 +276,7 @@ void limpiarFilaYBajarFilasSuperiores(int8_t indiceFila, uint8_t cuadricula[ALTO
     memset(cuadricula[0], 0, sizeof(cuadricula[0]));
 }
 
-void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA], bool *bandera, unsigned long *puntajeGlobal)
+void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA], bool *bandera, unsigned long *puntajeGlobal, bool *juegoTerminado)
 {
     if (!tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 1))
     {
@@ -340,6 +340,10 @@ void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRIC
             }
             printf("Puntaje actual: %lu\n", *puntajeGlobal);
             elegirPiezaAleatoria(tetrimino);
+            if (tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 0))
+            {
+                *juegoTerminado = true;
+            }
         }
         else
         {
@@ -401,7 +405,6 @@ int main()
         {0, 0},
         {0, 0},
         {0, 0},
-
     };
     /*
     Veamos la Z es
@@ -480,6 +483,7 @@ int main()
     // linea.x = 0;
     // linea.y = 0;
     bool banderaTocoSuelo = false;
+    bool juegoTerminado = false;
     unsigned long puntajeGlobal = 0;
 
     while (1)
@@ -494,43 +498,55 @@ int main()
             }
             else if (event.timer.source == timer_bajar_pieza)
             {
-                bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal);
+                if (!juegoTerminado)
+                {
+                    bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado);
+                }
             }
         }
         else if (event.type == ALLEGRO_EVENT_KEY_CHAR)
         {
             int teclaPresionada = event.keyboard.keycode;
-            if (teclaPresionada == ALLEGRO_KEY_K)
-            {
-                linea.y = indiceYParaFantasma(&linea, otraCuadricula);
-                banderaTocoSuelo = true;
-                bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal);
-            }
-            else if (teclaPresionada == ALLEGRO_KEY_J)
-            {
-                bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal);
-            }
-            else if (teclaPresionada == ALLEGRO_KEY_H)
-            {
-                if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, -1, 0))
-                {
-                    linea.x--;
-                }
-            }
-            else if (teclaPresionada == ALLEGRO_KEY_L)
+            if (!juegoTerminado)
             {
 
-                if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, 1, 0))
+                if (teclaPresionada == ALLEGRO_KEY_K)
                 {
-                    linea.x++;
+                    linea.y = indiceYParaFantasma(&linea, otraCuadricula);
+                    banderaTocoSuelo = true;
+                    bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado);
+                }
+                else if (teclaPresionada == ALLEGRO_KEY_J)
+                {
+                    bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado);
+                }
+                else if (teclaPresionada == ALLEGRO_KEY_H)
+                {
+                    if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, -1, 0))
+                    {
+                        linea.x--;
+                    }
+                }
+                else if (teclaPresionada == ALLEGRO_KEY_L)
+                {
+                    if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, 1, 0))
+                    {
+                        linea.x++;
+                    }
+                }
+                else if (teclaPresionada == ALLEGRO_KEY_SPACE)
+                {
+                    if (!tetriminoColisionaConCuadriculaAlRotar(&linea, otraCuadricula))
+                    {
+                        linea.cuadricula = rotar90CW(linea.cuadricula);
+                    }
                 }
             }
-            else if (teclaPresionada == ALLEGRO_KEY_SPACE)
+            else
             {
-                if (!tetriminoColisionaConCuadriculaAlRotar(&linea, otraCuadricula))
-                {
-                    linea.cuadricula = rotar90CW(linea.cuadricula);
-                }
+                memset(otraCuadricula, 0, ANCHO_CUADRICULA * ALTO_CUADRICULA);
+                juegoTerminado = false;
+                elegirPiezaAleatoria(&linea);
             }
         }
         else if ((event.type == ALLEGRO_EVENT_DISPLAY_CLOSE))
@@ -540,6 +556,21 @@ int main()
 
         if (redraw && al_is_event_queue_empty(queue))
         {
+            if (juegoTerminado)
+            {
+                al_clear_to_color(al_map_rgb(255, 255, 0));
+                al_draw_textf(
+                    fuente,
+                    rojo,
+                    0,
+                    0,
+                    0,
+                    "Juego terminado. Puntaje: %lu. Presiona una tecla para reiniciar",
+                    puntajeGlobal);
+                redraw = true;
+                al_flip_display();
+                continue;
+            }
             al_clear_to_color(al_map_rgb(0, 0, 0));
             /*
             =========================================

@@ -633,46 +633,6 @@ int main()
                     =========================================
             */
 
-            /*
-                    =========================================
-                    Empieza dibujo del fantasma
-                    =========================================
-            */
-
-            /*
-                Pensemos. No necesitamos cambiar la X, debemos
-                conservar todo de la pieza original excepto su Y, así
-                que yo creo que usaremos un offset
-
-                De hecho hasta podríamos hacerlo en el mismo ciclo que la pieza normal pero ya veremos
-             */
-            /*
-
-            int8_t offsetYFantasma = indiceYParaFantasma(&linea, otraCuadricula);
-            for (uint8_t indiceBit = 0; indiceBit < BITS_EN_UINT16; indiceBit++)
-            {
-
-                bool hayUnCuadroDeTetriminoEnLaCoordenadaActual = (linea.cuadricula >> (MAXIMO_INDICE_BIT_EN_UINT16 - indiceBit)) & 1;
-                if (hayUnCuadroDeTetriminoEnLaCoordenadaActual)
-                {
-                    // Llegados aquí sabemos que el "continue" no se ejecutó y que SÍ hay un tetrimino
-
-                    // Coordenadas sobre la cuadrícula después de aplicar los modificadores
-                    uint8_t xRelativoDentroDeCuadricula = indiceBit % BITS_POR_FILA_PARA_TETRIMINO;
-                    uint8_t YRelativoDentroDeCuadricula = indiceBit / BITS_POR_FILA_PARA_TETRIMINO;
-                    int sumaX = linea.x + xRelativoDentroDeCuadricula;
-                    int sumaY = YRelativoDentroDeCuadricula + offsetYFantasma;
-                    al_draw_filled_rectangle(sumaX * MEDIDA_CUADRO, sumaY * MEDIDA_CUADRO, (sumaX * MEDIDA_CUADRO) + MEDIDA_CUADRO, (sumaY * MEDIDA_CUADRO) + MEDIDA_CUADRO, verde);
-                }
-            }
-*/
-
-            /*
-                    =========================================
-                    Termina dibujo del fantasma
-                    =========================================
-            */
-
             al_flip_display();
 
             redraw = false;

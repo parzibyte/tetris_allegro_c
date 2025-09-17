@@ -501,10 +501,9 @@ int main()
             int teclaPresionada = event.keyboard.keycode;
             if (teclaPresionada == ALLEGRO_KEY_K)
             {
-                if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, 0, -1))
-                {
-                    linea.y--;
-                }
+                linea.y = indiceYParaFantasma(&linea, otraCuadricula);
+                banderaTocoSuelo = true;
+                bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal);
             }
             else if (teclaPresionada == ALLEGRO_KEY_J)
             {

@@ -230,6 +230,19 @@ bool tetriminoColisionaConCuadriculaAlAvanzar(struct Tetrimino *tetrimino, uint8
     return false;
 }
 
+int8_t indiceYParaFantasma(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA])
+{
+    for (uint8_t y = 0; y <= ALTO_CUADRICULA; y++)
+    {
+        if (tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, y - tetrimino->y))
+        {
+            return y - 1;
+        }
+    }
+    // TODO: tal vez no usar un uint8_t y devolver -1
+    return -1;
+}
+
 /*
 Devuelve el primer índice de la fila llena comenzando desde abajo (desde ALTO_CUADRICULA - 1)
 Si no hay ninguna fila llena devuelve -1
@@ -528,7 +541,11 @@ int main()
         if (redraw && al_is_event_queue_empty(queue))
         {
             al_clear_to_color(al_map_rgb(0, 0, 0));
-            // al_draw_text(font, al_map_rgb(255, 255, 255), 0, 0, 0, "Hola mundo");
+            /*
+            =========================================
+            Comienza dibujo de la cuadrícula
+            =========================================
+            */
 
             float xCoordenada = 0, yCoordenada = 0;
             for (int y = 0; y < ALTO_CUADRICULA; y++)
@@ -562,12 +579,23 @@ int main()
                 xCoordenada = 0;
                 yCoordenada += MEDIDA_CUADRO;
             }
+            /*
+                    =========================================
+                    Termina dibujo de la cuadrícula
+                    =========================================
+            */
             // Y ahora dibujamos la pieza
 
             // Cada figura vive en una cuadrícula de 4x4. 16 cuadros
             // en total, 16 bits en una sola variable uint16
 
             // Comienza nuevo código...
+
+            /*
+                    =========================================
+                    Empieza dibujo de la pieza
+                    =========================================
+            */
             for (uint8_t indiceBit = 0; indiceBit < BITS_EN_UINT16; indiceBit++)
             {
 
@@ -581,7 +609,12 @@ int main()
                     uint8_t YRelativoDentroDeCuadricula = indiceBit / BITS_POR_FILA_PARA_TETRIMINO;
                     int sumaX = linea.x + xRelativoDentroDeCuadricula;
                     int sumaY = linea.y + YRelativoDentroDeCuadricula;
+                    int8_t indicePiezaFantasma = indiceYParaFantasma(&linea, otraCuadricula);
+                    // Dibujar cuadro de tetrimino normal
                     al_draw_filled_rectangle(sumaX * MEDIDA_CUADRO, sumaY * MEDIDA_CUADRO, (sumaX * MEDIDA_CUADRO) + MEDIDA_CUADRO, (sumaY * MEDIDA_CUADRO) + MEDIDA_CUADRO, azul);
+
+                    // Y su fantasma más abajo
+                    al_draw_filled_rectangle(sumaX * MEDIDA_CUADRO, (YRelativoDentroDeCuadricula + indicePiezaFantasma) * MEDIDA_CUADRO, (sumaX * MEDIDA_CUADRO) + MEDIDA_CUADRO, ((YRelativoDentroDeCuadricula + indicePiezaFantasma) * MEDIDA_CUADRO) + MEDIDA_CUADRO, verde);
                     al_draw_textf(
                         fuente,
                         blanco,
@@ -593,6 +626,52 @@ int main()
                         sumaY);
                 }
             }
+
+            /*
+                    =========================================
+                    Termina dibujo de la pieza
+                    =========================================
+            */
+
+            /*
+                    =========================================
+                    Empieza dibujo del fantasma
+                    =========================================
+            */
+
+            /*
+                Pensemos. No necesitamos cambiar la X, debemos
+                conservar todo de la pieza original excepto su Y, así
+                que yo creo que usaremos un offset
+
+                De hecho hasta podríamos hacerlo en el mismo ciclo que la pieza normal pero ya veremos
+             */
+            /*
+
+            int8_t offsetYFantasma = indiceYParaFantasma(&linea, otraCuadricula);
+            for (uint8_t indiceBit = 0; indiceBit < BITS_EN_UINT16; indiceBit++)
+            {
+
+                bool hayUnCuadroDeTetriminoEnLaCoordenadaActual = (linea.cuadricula >> (MAXIMO_INDICE_BIT_EN_UINT16 - indiceBit)) & 1;
+                if (hayUnCuadroDeTetriminoEnLaCoordenadaActual)
+                {
+                    // Llegados aquí sabemos que el "continue" no se ejecutó y que SÍ hay un tetrimino
+
+                    // Coordenadas sobre la cuadrícula después de aplicar los modificadores
+                    uint8_t xRelativoDentroDeCuadricula = indiceBit % BITS_POR_FILA_PARA_TETRIMINO;
+                    uint8_t YRelativoDentroDeCuadricula = indiceBit / BITS_POR_FILA_PARA_TETRIMINO;
+                    int sumaX = linea.x + xRelativoDentroDeCuadricula;
+                    int sumaY = YRelativoDentroDeCuadricula + offsetYFantasma;
+                    al_draw_filled_rectangle(sumaX * MEDIDA_CUADRO, sumaY * MEDIDA_CUADRO, (sumaX * MEDIDA_CUADRO) + MEDIDA_CUADRO, (sumaY * MEDIDA_CUADRO) + MEDIDA_CUADRO, verde);
+                }
+            }
+*/
+
+            /*
+                    =========================================
+                    Termina dibujo del fantasma
+                    =========================================
+            */
 
             al_flip_display();
 

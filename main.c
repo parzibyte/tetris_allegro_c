@@ -17,6 +17,7 @@
 #define CUADRICULA_TETRIMINO 4
 #define TOTAL_TETRIMINOS_DISPONIBLES 5
 #define BITS_POR_FILA_PARA_TETRIMINO 4
+#define MITAD_CUADRICULA_X  ANCHO_CUADRICULA * BITS_EN_UN_BYTE / 2 - (BITS_POR_FILA_PARA_TETRIMINO / 2);
 
 struct Tetrimino
 {
@@ -113,7 +114,7 @@ void elegirPiezaAleatoria(struct Tetrimino *destino)
 {
     uint8_t indiceAleatorio = rand() % TOTAL_TETRIMINOS_DISPONIBLES;
     destino->cuadricula = piezas[indiceAleatorio].cuadricula;
-    destino->x = 0;
+    destino->x = MITAD_CUADRICULA_X;
     destino->y = 0;
 }
 

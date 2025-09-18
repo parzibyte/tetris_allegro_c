@@ -343,6 +343,7 @@ void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRIC
             if (tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 0))
             {
                 *juegoTerminado = true;
+                *puntajeGlobal = 0;
             }
         }
         else
@@ -510,24 +511,24 @@ int main()
             if (!juegoTerminado)
             {
 
-                if (teclaPresionada == ALLEGRO_KEY_K)
+                if (teclaPresionada == ALLEGRO_KEY_UP || teclaPresionada == ALLEGRO_KEY_K)
                 {
                     linea.y = indiceYParaFantasma(&linea, otraCuadricula);
                     banderaTocoSuelo = true;
                     bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado);
                 }
-                else if (teclaPresionada == ALLEGRO_KEY_J)
+                else if (teclaPresionada == ALLEGRO_KEY_J || teclaPresionada == ALLEGRO_KEY_DOWN)
                 {
                     bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado);
                 }
-                else if (teclaPresionada == ALLEGRO_KEY_H)
+                else if (teclaPresionada == ALLEGRO_KEY_H || teclaPresionada == ALLEGRO_KEY_LEFT)
                 {
                     if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, -1, 0))
                     {
                         linea.x--;
                     }
                 }
-                else if (teclaPresionada == ALLEGRO_KEY_L)
+                else if (teclaPresionada == ALLEGRO_KEY_L || teclaPresionada == ALLEGRO_KEY_RIGHT)
                 {
                     if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, 1, 0))
                     {

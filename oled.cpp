@@ -16,6 +16,11 @@
 #define MAXIMO_INDICE_BIT_EN_BYTE 7
 #define CUADRICULA_TETRIMINO 4
 #define TOTAL_TETRIMINOS_DISPONIBLES 5
+#define MITAD_CUADRICULA_X ANCHO_CUADRICULA *BITS_EN_UN_BYTE / 2 - (BITS_POR_FILA_PARA_TETRIMINO / 2);
+#define PIN_BOTON_IZQUIERDA 2
+#define PIN_BOTON_ABAJO 3
+#define PIN_BOTON_DERECHA 4
+#define PIN_BOTON_ROTAR 5
 Adafruit_SSD1306 display(ANCHO_OLED, ALTO_OLED, &Wire, -1);
 struct Tetrimino
 {
@@ -62,7 +67,7 @@ void elegirPiezaAleatoria(struct Tetrimino *destino, struct TetriminoParaElegir 
 {
   uint8_t indiceAleatorio = random(0, TOTAL_TETRIMINOS_DISPONIBLES);
   destino->cuadricula = piezas[indiceAleatorio].cuadricula;
-  destino->x = 0;
+  destino->x = MITAD_CUADRICULA_X;
   destino->y = 0;
 }
 void inicializarPiezas(struct TetriminoParaElegir *piezas)
@@ -381,6 +386,7 @@ bool tetriminoColisionaConCuadriculaAlRotar(struct Tetrimino *tetrimino, uint8_t
   }
   return false;
 }
+
 /*
 Recibe un apuntador al tetrimino, la cuadrícula del tetris y dos modificadores x e y.
 La función aumentará las coordenadas del tetrimino a partir de los modificadores simulando un avance y
@@ -438,7 +444,20 @@ bool tetriminoColisionaConCuadriculaAlAvanzar(struct Tetrimino *tetrimino, uint8
   return false;
 }
 
-void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA], bool *bandera, unsigned long *puntajeGlobal)
+int8_t indiceYParaFantasma(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA])
+{
+  for (uint8_t y = 0; y <= ALTO_CUADRICULA; y++)
+  {
+    if (tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, y - tetrimino->y))
+    {
+      return y - 1;
+    }
+  }
+  // TODO: tal vez no usar un uint8_t y devolver -1
+  return -1;
+}
+
+void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA], bool *bandera, unsigned long *puntajeGlobal, bool *juegoTerminado)
 {
   if (!tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 1))
   {
@@ -500,6 +519,11 @@ void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRIC
         }
       }
       elegirPiezaAleatoria(tetrimino, todasLasPiezasParaElegir);
+      if (tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 0))
+      {
+        *juegoTerminado = true;
+        *puntajeGlobal = 0;
+      }
     }
     else
     {
@@ -509,10 +533,9 @@ void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRIC
   }
 }
 
-const int pinX = 0,
-          pinY = 1;
 struct Tetrimino tetrimino;
 bool banderaTocoSuelo = false;
+bool juegoTerminado = false;
 // Linea acostada es 240 porque necesitamos encendidos los primeros 4 bits
 // Línea vertical sería 136 y 136 porque necesitamos el bit 1 y 4 (128 y 8)
 /*
@@ -538,17 +561,20 @@ unsigned long ultimosMilisegundos = 0;
 const long intervaloAvanzarPiezaEnMs = 500;
 unsigned long puntaje = 0;
 
-bool haPresionadoElBotonPreviamente = false;
+bool haPresionadoBotonRotarPreviamente = false;
+bool haPresionadoBotonIzquierdaPreviamente = false;
+bool haPresionadoBotonDerechaPreviamente = false;
+bool haPresionadoBotonAbajoPreviamente = false;
 
 void setup()
 {
   puntaje = 0;
   randomSeed(analogRead(3));
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  pinMode(2, INPUT_PULLUP);
-  pinMode(3, INPUT_PULLUP);
-  pinMode(4, INPUT_PULLUP);
-  pinMode(5, INPUT_PULLUP);
+  pinMode(PIN_BOTON_IZQUIERDA, INPUT_PULLUP);
+  pinMode(PIN_BOTON_DERECHA, INPUT_PULLUP);
+  pinMode(PIN_BOTON_ABAJO, INPUT_PULLUP);
+  pinMode(PIN_BOTON_ROTAR, INPUT_PULLUP);
   inicializarPiezas(todasLasPiezasParaElegir);
   elegirPiezaAleatoria(&tetrimino, todasLasPiezasParaElegir);
 }
@@ -556,108 +582,191 @@ void setup()
 void loop()
 {
 
-   display.clearDisplay();
-  int valorX = analogRead(pinX),
-      valorY = analogRead(pinY);
-
-  bool presionado = !digitalRead(5);
+  display.clearDisplay();
   unsigned long milisegundosActuales = millis();
-  display.fillRect(0, 0, ANCHO_OLED, OFFSET_Y * MEDIDA_CUADRO,SSD1306_WHITE);
+  /*
+  Detección de botones
+  */
+  display.fillRect(0, 0, ANCHO_OLED, OFFSET_Y * MEDIDA_CUADRO, SSD1306_WHITE);
   display.setTextColor(SSD1306_BLACK);
- 
-  display.setCursor((ANCHO_OLED / 2) - (6 * String(puntaje).length() / 2),1);
+
+  display.setCursor((ANCHO_OLED / 2) - (6 * String(puntaje).length() / 2), 1);
   display.setTextSize(1);
   display.print(puntaje);
   if (milisegundosActuales - ultimosMilisegundos >= intervaloAvanzarPiezaEnMs)
   {
-    bajarTetrimino(&tetrimino, otraCuadricula, &banderaTocoSuelo, &puntaje);
-    ultimosMilisegundos = milisegundosActuales;
-  }
-  // Derecha
-  if (!digitalRead(4))
-  {
-
-    if (!tetriminoColisionaConCuadriculaAlAvanzar(&tetrimino, otraCuadricula, 1, 0))
+    if (!juegoTerminado)
     {
-      tetrimino.x++;
+      bajarTetrimino(&tetrimino, otraCuadricula, &banderaTocoSuelo, &puntaje, &juegoTerminado);
+      ultimosMilisegundos = milisegundosActuales;
     }
   }
-  // Izquierda
-  if (!digitalRead(2))
+  /*
+  Comienza detección de botones
+  */
+  if (!juegoTerminado)
   {
 
-    if (!tetriminoColisionaConCuadriculaAlAvanzar(&tetrimino, otraCuadricula, -1, 0))
+    // Derecha
+    if (!digitalRead(PIN_BOTON_DERECHA))
     {
-      tetrimino.x--;
+      haPresionadoBotonDerechaPreviamente = true;
     }
-  }
-  // Abajo
-  if (!digitalRead(3))
-  {
-    bajarTetrimino(&tetrimino, otraCuadricula, &banderaTocoSuelo, &puntaje);
-  }
-  if (presionado)
-  {
-    haPresionadoElBotonPreviamente = true;
+    else
+    {
+      if (haPresionadoBotonDerechaPreviamente)
+      {
+        haPresionadoBotonDerechaPreviamente = false;
+        if (!tetriminoColisionaConCuadriculaAlAvanzar(&tetrimino, otraCuadricula, 1, 0))
+        {
+          tetrimino.x++;
+        }
+      }
+    }
+
+    // Izquierda
+    if (!digitalRead(PIN_BOTON_IZQUIERDA))
+    {
+      haPresionadoBotonIzquierdaPreviamente = true;
+    }
+    else
+    {
+      if (haPresionadoBotonIzquierdaPreviamente)
+      {
+        haPresionadoBotonIzquierdaPreviamente = false;
+        if (!tetriminoColisionaConCuadriculaAlAvanzar(&tetrimino, otraCuadricula, -1, 0))
+        {
+          tetrimino.x--;
+        }
+      }
+    }
+
+    // Abajo
+    // TODO: ahorita no tengo botones adicionales así que usaré el de abajo como si fuera el de arriba
+    if (!digitalRead(PIN_BOTON_ABAJO))
+    {
+      haPresionadoBotonAbajoPreviamente = true;
+    }
+    else
+    {
+      if (haPresionadoBotonAbajoPreviamente)
+      {
+        haPresionadoBotonAbajoPreviamente = false;
+        // bajarTetrimino(&tetrimino, otraCuadricula, &banderaTocoSuelo, &puntaje, &juegoTerminado);
+        int8_t posibleIndice = indiceYParaFantasma(&tetrimino, otraCuadricula);
+        if (posibleIndice != -1)
+        {
+          tetrimino.y = indiceYParaFantasma(&tetrimino, otraCuadricula);
+          banderaTocoSuelo = true;
+          bajarTetrimino(&tetrimino, otraCuadricula, &banderaTocoSuelo, &puntaje, &juegoTerminado);
+        }
+      }
+    }
+    if (!digitalRead(PIN_BOTON_ROTAR))
+    {
+      haPresionadoBotonRotarPreviamente = true;
+    }
+    else
+    {
+      if (haPresionadoBotonRotarPreviamente)
+      {
+        haPresionadoBotonRotarPreviamente = false;
+        if (!tetriminoColisionaConCuadriculaAlRotar(&tetrimino, otraCuadricula))
+        {
+          tetrimino.cuadricula = rotar90CW(tetrimino.cuadricula);
+        }
+      }
+    }
   }
   else
   {
-    if (haPresionadoElBotonPreviamente)
+    /*
+    Es porque estamos esperando la pulsación de un botón
+    para reiniciar el juego
+    */
+    if (!digitalRead(PIN_BOTON_IZQUIERDA))
     {
-      haPresionadoElBotonPreviamente = false;
-      if (!tetriminoColisionaConCuadriculaAlRotar(&tetrimino, otraCuadricula))
-      {
-        tetrimino.cuadricula = rotar90CW(tetrimino.cuadricula);
-      }
+      memset(otraCuadricula, 0, sizeof(otraCuadricula));
+      juegoTerminado = false;
+      elegirPiezaAleatoria(&tetrimino, todasLasPiezasParaElegir);
     }
   }
 
-  // Dibujamos toda la cuadrícula...
-
-  for (int y = 0; y < ALTO_CUADRICULA; y++)
+  /*
+  Termina detección de botones
+  */
+  if (juegoTerminado)
   {
-    for (int x = 0; x < ANCHO_CUADRICULA; x++)
-    {
-      for (int i = 0; i < BITS_EN_UN_BYTE; i++)
-      {
-        int encendido = (otraCuadricula[y][x] >> (MAXIMO_INDICE_BIT_EN_BYTE - i)) & 1;
-        int verdaderoX = (x * BITS_EN_UN_BYTE) + i;
-        if (encendido)
-        {
-          display.fillRect(verdaderoX * MEDIDA_CUADRO, (y + OFFSET_Y) * MEDIDA_CUADRO,
-                           MEDIDA_CUADRO, MEDIDA_CUADRO, SSD1306_WHITE);
-        }
-        else
-        {
-
-          display.fillRect(verdaderoX * MEDIDA_CUADRO, (y + OFFSET_Y) * MEDIDA_CUADRO,
-                           MEDIDA_CUADRO, MEDIDA_CUADRO, SSD1306_BLACK);
-        }
-      }
-    }
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.setTextColor(SSD1306_WHITE);
+    display.setTextSize(1);
+    display.print("Has perdido. Puntaje:");
+    display.setTextSize(2);
+    display.print(String(puntaje));
+    display.setTextSize(1);
+    display.setCursor(0, 34);
+    display.print("Presiona IZQ. para reiniciar");
+    display.setCursor(0, 48);
+    display.print("By Parzibyte - parzibyte.me/blog");
+    display.display();
   }
-  // Y ahora el tetrimino
-
-  // Comienza nuevo código...
-  for (uint8_t indiceBit = 0; indiceBit < BITS_EN_UINT16; indiceBit++)
+  else
   {
 
-    bool hayUnCuadroDeTetriminoEnLaCoordenadaActual = (tetrimino.cuadricula >> (MAXIMO_INDICE_BIT_EN_UINT16 - indiceBit)) & 1;
-    if (hayUnCuadroDeTetriminoEnLaCoordenadaActual)
+    // Dibujamos toda la cuadrícula...
+
+    for (int y = 0; y < ALTO_CUADRICULA; y++)
     {
-      // Llegados aquí sabemos que el "continue" no se ejecutó y que SÍ hay un tetrimino
+      for (int x = 0; x < ANCHO_CUADRICULA; x++)
+      {
+        for (int i = 0; i < BITS_EN_UN_BYTE; i++)
+        {
+          int encendido = (otraCuadricula[y][x] >> (MAXIMO_INDICE_BIT_EN_BYTE - i)) & 1;
+          int verdaderoX = (x * BITS_EN_UN_BYTE) + i;
+          if (encendido)
+          {
+            display.fillRect(verdaderoX * MEDIDA_CUADRO, (y + OFFSET_Y) * MEDIDA_CUADRO,
+                             MEDIDA_CUADRO, MEDIDA_CUADRO, SSD1306_WHITE);
+          }
+          else
+          {
 
-      // Coordenadas sobre la cuadrícula después de aplicar los modificadores
-      uint8_t xRelativoDentroDeCuadricula = indiceBit % BITS_POR_FILA_PARA_TETRIMINO;
-      uint8_t YRelativoDentroDeCuadricula = indiceBit / BITS_POR_FILA_PARA_TETRIMINO;
-      int sumaX = tetrimino.x + xRelativoDentroDeCuadricula;
-      int sumaY = tetrimino.y + YRelativoDentroDeCuadricula;
-      display.fillRect(sumaX * MEDIDA_CUADRO, (sumaY + OFFSET_Y) * MEDIDA_CUADRO,
-                       MEDIDA_CUADRO, MEDIDA_CUADRO, SSD1306_WHITE);
+            display.fillRect(verdaderoX * MEDIDA_CUADRO, (y + OFFSET_Y) * MEDIDA_CUADRO,
+                             MEDIDA_CUADRO, MEDIDA_CUADRO, SSD1306_BLACK);
+          }
+        }
+      }
     }
+    // Y ahora el tetrimino
+
+    // Comienza nuevo código...
+    for (uint8_t indiceBit = 0; indiceBit < BITS_EN_UINT16; indiceBit++)
+    {
+
+      bool hayUnCuadroDeTetriminoEnLaCoordenadaActual = (tetrimino.cuadricula >> (MAXIMO_INDICE_BIT_EN_UINT16 - indiceBit)) & 1;
+      if (hayUnCuadroDeTetriminoEnLaCoordenadaActual)
+      {
+        // Llegados aquí sabemos que el "continue" no se ejecutó y que SÍ hay un tetrimino
+
+        // Coordenadas sobre la cuadrícula después de aplicar los modificadores
+        uint8_t xRelativoDentroDeCuadricula = indiceBit % BITS_POR_FILA_PARA_TETRIMINO;
+        uint8_t YRelativoDentroDeCuadricula = indiceBit / BITS_POR_FILA_PARA_TETRIMINO;
+        int sumaX = tetrimino.x + xRelativoDentroDeCuadricula;
+        int sumaY = tetrimino.y + YRelativoDentroDeCuadricula;
+        // Dibujar pieza normal
+        display.fillRect(sumaX * MEDIDA_CUADRO, (sumaY + OFFSET_Y) * MEDIDA_CUADRO,
+                         MEDIDA_CUADRO, MEDIDA_CUADRO, SSD1306_WHITE);
+
+        // Y fantasma
+        int8_t indicePiezaFantasma = indiceYParaFantasma(&tetrimino, otraCuadricula);
+        display.drawRect(sumaX * MEDIDA_CUADRO, (YRelativoDentroDeCuadricula + indicePiezaFantasma + OFFSET_Y) * MEDIDA_CUADRO,
+                         MEDIDA_CUADRO, MEDIDA_CUADRO, SSD1306_WHITE);
+      }
+    }
+
+    display.drawRect(0, OFFSET_Y * MEDIDA_CUADRO, ANCHO_OLED, (ALTO_OLED - (OFFSET_Y * MEDIDA_CUADRO)), SSD1306_WHITE);
+
+    display.display();
   }
-
-  display.drawRect(0, OFFSET_Y * MEDIDA_CUADRO, ANCHO_OLED, (ALTO_OLED - (OFFSET_Y * MEDIDA_CUADRO)), SSD1306_WHITE);
-
-  display.display();
 }

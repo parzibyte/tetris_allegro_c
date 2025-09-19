@@ -1,6 +1,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <math.h>
 
 #include <stdbool.h>
 #define OFFSET_Y 4
@@ -21,6 +22,8 @@
 #define PIN_BOTON_ABAJO 3
 #define PIN_BOTON_DERECHA 4
 #define PIN_BOTON_ROTAR 5
+#define TIEMPO_INICIAL_BAJAR_PIEZA_MS 1000
+#define TIEMPO_MINIMO_BAJAR_PIEZA_MS 250
 Adafruit_SSD1306 display(ANCHO_OLED, ALTO_OLED, &Wire, -1);
 struct Tetrimino
 {
@@ -522,7 +525,6 @@ void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRIC
       if (tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 0))
       {
         *juegoTerminado = true;
-        *puntajeGlobal = 0;
       }
     }
     else
@@ -557,8 +559,7 @@ Primer byte: 11100100
 */
 // encendidos en cada bit
 unsigned long ultimosMilisegundos = 0;
-// TODO: tal vez no deba ser constante porque debemos reducirlo entre mayor dificultad
-const long intervaloAvanzarPiezaEnMs = 500;
+// unsigned long intervaloAvanzarPiezaEnMs = 1000;
 unsigned long puntaje = 0;
 
 bool haPresionadoBotonRotarPreviamente = false;
@@ -593,7 +594,8 @@ void loop()
   display.setCursor((ANCHO_OLED / 2) - (6 * String(puntaje).length() / 2), 1);
   display.setTextSize(1);
   display.print(puntaje);
-  if (milisegundosActuales - ultimosMilisegundos >= intervaloAvanzarPiezaEnMs)
+  unsigned long intervalo = TIEMPO_MINIMO_BAJAR_PIEZA_MS + (unsigned long)((TIEMPO_INICIAL_BAJAR_PIEZA_MS - TIEMPO_MINIMO_BAJAR_PIEZA_MS) * exp(-0.01 * puntaje));
+  if (milisegundosActuales - ultimosMilisegundos >= intervalo)
   {
     if (!juegoTerminado)
     {
@@ -688,6 +690,7 @@ void loop()
     {
       memset(otraCuadricula, 0, sizeof(otraCuadricula));
       juegoTerminado = false;
+      puntaje = 0;
       elegirPiezaAleatoria(&tetrimino, todasLasPiezasParaElegir);
     }
   }

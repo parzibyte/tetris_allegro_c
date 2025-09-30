@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <allegro5/allegro_ttf.h>
 #include <stdbool.h>
+#include <allegro5/allegro_image.h>
 #define ALTURA 800
 #define ANCHURA 1000
 #define MEDIDA_CUADRO 28
@@ -360,6 +361,18 @@ int main()
     al_init();
     al_init_primitives_addon();
     al_install_keyboard();
+    if (!al_init_image_addon())
+    {
+        fprintf(stderr, "Error inicializando librería imagen");
+    }
+    ALLEGRO_BITMAP *imagen_png = NULL;
+
+    imagen_png = al_load_bitmap("bitmap.png");
+
+    if (!imagen_png)
+    {
+        fprintf(stderr, "Error cargando imagen");
+    }
 
     ALLEGRO_TIMER *timer = al_create_timer(1.0 / 30.0);
     ALLEGRO_EVENT_QUEUE *queue = al_create_event_queue();
@@ -656,6 +669,19 @@ int main()
                         "(%d,%d)",
                         sumaX,
                         sumaY);
+                    float sx = 0;
+                    float sy = 0;
+                    float sw = al_get_bitmap_width(imagen_png);  
+                    float sh = al_get_bitmap_height(imagen_png); 
+
+                    float dx = sumaX * MEDIDA_CUADRO;
+                    float dy = sumaY * MEDIDA_CUADRO;
+                    float dw = MEDIDA_CUADRO; 
+                    float dh = MEDIDA_CUADRO; 
+
+                    al_draw_scaled_bitmap(imagen_png,
+                                          sx, sy, sw, sh,
+                                          dx, dy, dw, dh, 0);
                 }
             }
 
@@ -675,6 +701,7 @@ int main()
     al_destroy_display(disp);
     al_destroy_timer(timer);
     al_destroy_event_queue(queue);
+    al_destroy_bitmap(imagen_png);
 
     return 0;
 }

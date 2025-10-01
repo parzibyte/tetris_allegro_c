@@ -6,11 +6,9 @@
 #include <allegro5/allegro_ttf.h>
 #include <stdbool.h>
 #include <allegro5/allegro_image.h>
-#define ALTURA 800
-#define ANCHURA 1000
-#define MEDIDA_CUADRO 28
-#define ANCHO_CUADRICULA 2
-#define ALTO_CUADRICULA 16
+#define MEDIDA_CUADRO 32
+#define ANCHO_CUADRICULA 2 // Recuerda que se multiplicará por BITS_EN_UN_BYTE así que si es 2 en realidad es 16
+#define ALTO_CUADRICULA 30
 #define BITS_EN_UN_BYTE 8
 #define BITS_EN_UINT16 16
 #define MAXIMO_INDICE_BIT_EN_BYTE 7
@@ -365,11 +363,19 @@ int main()
     {
         fprintf(stderr, "Error inicializando librería imagen");
     }
-    ALLEGRO_BITMAP *imagen_png = NULL;
+    ALLEGRO_BITMAP *imagen_pieza_caida = NULL;
+    ALLEGRO_BITMAP *imagen_pieza_movimiento = NULL;
 
-    imagen_png = al_load_bitmap("bitmap.png");
+    imagen_pieza_caida = al_load_bitmap("bitmap.png");
 
-    if (!imagen_png)
+    if (!imagen_pieza_caida)
+    {
+        fprintf(stderr, "Error cargando imagen");
+    }
+
+    imagen_pieza_movimiento = al_load_bitmap("2.png");
+
+    if (!imagen_pieza_movimiento)
     {
         fprintf(stderr, "Error cargando imagen");
     }
@@ -386,7 +392,7 @@ int main()
     al_set_new_display_option(ALLEGRO_SAMPLE_BUFFERS, 1, ALLEGRO_SUGGEST);
     al_set_new_display_option(ALLEGRO_SAMPLES, 8, ALLEGRO_SUGGEST);
     al_set_new_bitmap_flags(ALLEGRO_MIN_LINEAR | ALLEGRO_MAG_LINEAR);
-    ALLEGRO_DISPLAY *disp = al_create_display(ANCHURA, ALTURA);
+    ALLEGRO_DISPLAY *disp = al_create_display(MEDIDA_CUADRO * ANCHO_CUADRICULA * BITS_EN_UN_BYTE, ALTO_CUADRICULA * MEDIDA_CUADRO);
     ALLEGRO_FONT *font = al_create_builtin_font();
 
     al_register_event_source(queue, al_get_keyboard_event_source());
@@ -398,6 +404,7 @@ int main()
 
     al_start_timer(timer);
     ALLEGRO_COLOR blanco = al_map_rgb_f(255, 255, 255);
+    ALLEGRO_COLOR negro = al_map_rgb_f(0, 0, 0);
     ALLEGRO_COLOR rojo = al_map_rgb_f(255, 0, 0);
     ALLEGRO_COLOR azul = al_map_rgb_f(0, 0, 255);
     ALLEGRO_COLOR verde = al_map_rgb_f(0, 255, 0);
@@ -585,6 +592,7 @@ int main()
                 al_flip_display();
                 continue;
             }
+            // Evitar que haya líneas azules o de colores raros
             al_clear_to_color(al_map_rgb(0, 0, 0));
             /*
             =========================================
@@ -603,16 +611,27 @@ int main()
                         int encendido = (otraCuadricula[y][x] >> (MAXIMO_INDICE_BIT_EN_BYTE - i)) & 1;
                         // printf("x=%d,y=%d. Estamos en %d con bit %d. Encendido? %d. Quiero %d\n",
                         // x, y, otraCuadricula[y][x], i, encendido, verdaderoX);
-                        al_draw_filled_rectangle(xCoordenada, yCoordenada, xCoordenada + MEDIDA_CUADRO, yCoordenada + MEDIDA_CUADRO, encendido == 0 ? blanco : rojo);
-                        al_draw_textf(
-                            fuente,
-                            encendido == 0 ? blanco : rojo,
-                            xCoordenada,
-                            yCoordenada,
-                            0,
-                            "(%d,%d)",
-                            (x * BITS_EN_UN_BYTE) + i,
-                            y);
+                        if (encendido)
+                        {
+
+                            /**/
+                            float sw = al_get_bitmap_width(imagen_pieza_caida);
+                            float sh = al_get_bitmap_height(imagen_pieza_caida);
+
+                            float dx = xCoordenada;
+                            float dy = yCoordenada;
+                            float dw = MEDIDA_CUADRO;
+                            float dh = MEDIDA_CUADRO;
+
+                            al_draw_scaled_bitmap(imagen_pieza_caida,
+                                                  0, 0, sw, sh,
+                                                  dx, dy, dw, dh, 0);
+                            /** */
+                        }
+                        else
+                        {
+                            al_draw_filled_rectangle(xCoordenada, yCoordenada, xCoordenada + MEDIDA_CUADRO, yCoordenada + MEDIDA_CUADRO, encendido == 0 ? negro : rojo);
+                        }
 
                         xCoordenada += MEDIDA_CUADRO;
                     }
@@ -655,31 +674,19 @@ int main()
                     int sumaX = linea.x + xRelativoDentroDeCuadricula;
                     int sumaY = linea.y + YRelativoDentroDeCuadricula;
                     int8_t indicePiezaFantasma = indiceYParaFantasma(&linea, otraCuadricula);
-                    // Dibujar cuadro de tetrimino normal
-                    al_draw_filled_rectangle(sumaX * MEDIDA_CUADRO, sumaY * MEDIDA_CUADRO, (sumaX * MEDIDA_CUADRO) + MEDIDA_CUADRO, (sumaY * MEDIDA_CUADRO) + MEDIDA_CUADRO, azul);
 
-                    // Y su fantasma más abajo
-                    al_draw_filled_rectangle(sumaX * MEDIDA_CUADRO, (YRelativoDentroDeCuadricula + indicePiezaFantasma) * MEDIDA_CUADRO, (sumaX * MEDIDA_CUADRO) + MEDIDA_CUADRO, ((YRelativoDentroDeCuadricula + indicePiezaFantasma) * MEDIDA_CUADRO) + MEDIDA_CUADRO, verde);
-                    al_draw_textf(
-                        fuente,
-                        blanco,
-                        sumaX * MEDIDA_CUADRO,
-                        sumaY * MEDIDA_CUADRO,
-                        0,
-                        "(%d,%d)",
-                        sumaX,
-                        sumaY);
+                    al_draw_rectangle(sumaX * MEDIDA_CUADRO, (YRelativoDentroDeCuadricula + indicePiezaFantasma) * MEDIDA_CUADRO, (sumaX * MEDIDA_CUADRO) + MEDIDA_CUADRO, ((YRelativoDentroDeCuadricula + indicePiezaFantasma) * MEDIDA_CUADRO) + MEDIDA_CUADRO, azul, 2);
                     float sx = 0;
                     float sy = 0;
-                    float sw = al_get_bitmap_width(imagen_png);  
-                    float sh = al_get_bitmap_height(imagen_png); 
+                    float sw = al_get_bitmap_width(imagen_pieza_movimiento);
+                    float sh = al_get_bitmap_height(imagen_pieza_movimiento);
 
                     float dx = sumaX * MEDIDA_CUADRO;
                     float dy = sumaY * MEDIDA_CUADRO;
-                    float dw = MEDIDA_CUADRO; 
-                    float dh = MEDIDA_CUADRO; 
+                    float dw = MEDIDA_CUADRO;
+                    float dh = MEDIDA_CUADRO;
 
-                    al_draw_scaled_bitmap(imagen_png,
+                    al_draw_scaled_bitmap(imagen_pieza_movimiento,
                                           sx, sy, sw, sh,
                                           dx, dy, dw, dh, 0);
                 }
@@ -701,7 +708,8 @@ int main()
     al_destroy_display(disp);
     al_destroy_timer(timer);
     al_destroy_event_queue(queue);
-    al_destroy_bitmap(imagen_png);
+    al_destroy_bitmap(imagen_pieza_caida);
+    al_destroy_bitmap(imagen_pieza_movimiento);
 
     return 0;
 }

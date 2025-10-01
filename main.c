@@ -6,6 +6,7 @@
 #include <allegro5/allegro_ttf.h>
 #include <stdbool.h>
 #include <allegro5/allegro_image.h>
+#define OFFSET_X 200
 #define MEDIDA_CUADRO 32
 #define ANCHO_CUADRICULA 2 // Recuerda que se multiplicará por BITS_EN_UN_BYTE así que si es 2 en realidad es 16
 #define ALTO_CUADRICULA 30
@@ -17,6 +18,7 @@
 #define TOTAL_TETRIMINOS_DISPONIBLES 5
 #define BITS_POR_FILA_PARA_TETRIMINO 4
 #define MITAD_CUADRICULA_X ANCHO_CUADRICULA *BITS_EN_UN_BYTE / 2 - (BITS_POR_FILA_PARA_TETRIMINO / 2);
+#define GROSOR_BORDE 10
 
 struct Tetrimino
 {
@@ -392,7 +394,8 @@ int main()
     al_set_new_display_option(ALLEGRO_SAMPLE_BUFFERS, 1, ALLEGRO_SUGGEST);
     al_set_new_display_option(ALLEGRO_SAMPLES, 8, ALLEGRO_SUGGEST);
     al_set_new_bitmap_flags(ALLEGRO_MIN_LINEAR | ALLEGRO_MAG_LINEAR);
-    ALLEGRO_DISPLAY *disp = al_create_display(MEDIDA_CUADRO * ANCHO_CUADRICULA * BITS_EN_UN_BYTE, ALTO_CUADRICULA * MEDIDA_CUADRO);
+    // Aquí se configura el tamaño de la pantalla
+    ALLEGRO_DISPLAY *disp = al_create_display((MEDIDA_CUADRO * ANCHO_CUADRICULA * BITS_EN_UN_BYTE) + OFFSET_X, (ALTO_CUADRICULA * MEDIDA_CUADRO) + GROSOR_BORDE * 2);
     ALLEGRO_FONT *font = al_create_builtin_font();
 
     al_register_event_source(queue, al_get_keyboard_event_source());
@@ -403,10 +406,11 @@ int main()
     ALLEGRO_EVENT event;
 
     al_start_timer(timer);
-    ALLEGRO_COLOR blanco = al_map_rgb_f(255, 255, 255);
+    ALLEGRO_COLOR blanco = al_map_rgb(255, 255, 255);
     ALLEGRO_COLOR negro = al_map_rgb_f(0, 0, 0);
     ALLEGRO_COLOR rojo = al_map_rgb_f(255, 0, 0);
-    ALLEGRO_COLOR azul = al_map_rgb_f(0, 0, 255);
+    ALLEGRO_COLOR azul = al_map_rgb(0, 0, 255);
+    ALLEGRO_COLOR color_borde = al_map_rgb(136, 195, 191);
     ALLEGRO_COLOR verde = al_map_rgb_f(0, 255, 0);
 
     uint8_t otraCuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA] = {
@@ -476,7 +480,7 @@ int main()
     piezas[4].cuadricula = 0xE400;
     al_init_font_addon();
     al_init_ttf_addon();
-    ALLEGRO_FONT *fuente = al_load_font("arial.ttf", 11, 0);
+    ALLEGRO_FONT *fuente = al_load_font("arial.ttf", 20, 0);
     struct Tetrimino linea;
     // Linea acostada es 240 porque necesitamos encendidos los primeros 4 bits
     // Línea vertical sería 136 y 136 porque necesitamos el bit 1 y 4 (128 y 8)
@@ -521,7 +525,7 @@ int main()
             {
                 if (!juegoTerminado)
                 {
-                    bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado);
+                    // bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado);
                 }
             }
         }
@@ -596,7 +600,7 @@ int main()
             al_clear_to_color(al_map_rgb(0, 0, 0));
             /*
             =========================================
-            Comienza dibujo de la cuadrícula
+            Comienza dibujo de la cuadrícula donde las piezas ya han caído
             =========================================
             */
 
@@ -607,10 +611,8 @@ int main()
                 {
                     for (int i = 0; i < BITS_EN_UN_BYTE; i++)
                     {
-                        // int encendido = (otraCuadricula[y][x] >> i) & 1;
                         int encendido = (otraCuadricula[y][x] >> (MAXIMO_INDICE_BIT_EN_BYTE - i)) & 1;
-                        // printf("x=%d,y=%d. Estamos en %d con bit %d. Encendido? %d. Quiero %d\n",
-                        // x, y, otraCuadricula[y][x], i, encendido, verdaderoX);
+                        // Si hay un 1 en este bit entonces dibujamos la imagen
                         if (encendido)
                         {
 
@@ -618,10 +620,10 @@ int main()
                             float sw = al_get_bitmap_width(imagen_pieza_caida);
                             float sh = al_get_bitmap_height(imagen_pieza_caida);
 
-                            float dx = xCoordenada;
-                            float dy = yCoordenada;
-                            float dw = MEDIDA_CUADRO;
-                            float dh = MEDIDA_CUADRO;
+                            float dx = xCoordenada + GROSOR_BORDE;
+                            float dy = yCoordenada + GROSOR_BORDE;
+                            float dw = MEDIDA_CUADRO ;
+                            float dh = MEDIDA_CUADRO ;
 
                             al_draw_scaled_bitmap(imagen_pieza_caida,
                                                   0, 0, sw, sh,
@@ -630,34 +632,24 @@ int main()
                         }
                         else
                         {
-                            al_draw_filled_rectangle(xCoordenada, yCoordenada, xCoordenada + MEDIDA_CUADRO, yCoordenada + MEDIDA_CUADRO, encendido == 0 ? negro : rojo);
+                            // Si no, un rectángulo negro que coincida con el fondo
+                            al_draw_filled_rectangle(xCoordenada + GROSOR_BORDE, yCoordenada+ GROSOR_BORDE, xCoordenada + MEDIDA_CUADRO+GROSOR_BORDE, yCoordenada + MEDIDA_CUADRO+GROSOR_BORDE, encendido == 0 ? negro : rojo);
                         }
 
                         xCoordenada += MEDIDA_CUADRO;
                     }
-                    // printf("======\n");
-                    //  printf("En esa pos hay %d", otraCuadricula[y][x]);
-                    //  int indice = y * ancho + x;
-                    //  printf("x=%d,y=%d. El indice es %d\n", x, y, indice);
                 }
                 xCoordenada = 0;
                 yCoordenada += MEDIDA_CUADRO;
             }
             /*
                     =========================================
-                    Termina dibujo de la cuadrícula
+                    Termina dibujo de la cuadrícula donde las piezas ya han caído
                     =========================================
             */
-            // Y ahora dibujamos la pieza
-
-            // Cada figura vive en una cuadrícula de 4x4. 16 cuadros
-            // en total, 16 bits en una sola variable uint16
-
-            // Comienza nuevo código...
-
             /*
                     =========================================
-                    Empieza dibujo de la pieza
+                    Empieza dibujo de la pieza (tetrimino) en movimiento
                     =========================================
             */
             for (uint8_t indiceBit = 0; indiceBit < BITS_EN_UINT16; indiceBit++)
@@ -675,14 +667,14 @@ int main()
                     int sumaY = linea.y + YRelativoDentroDeCuadricula;
                     int8_t indicePiezaFantasma = indiceYParaFantasma(&linea, otraCuadricula);
 
-                    al_draw_rectangle(sumaX * MEDIDA_CUADRO, (YRelativoDentroDeCuadricula + indicePiezaFantasma) * MEDIDA_CUADRO, (sumaX * MEDIDA_CUADRO) + MEDIDA_CUADRO, ((YRelativoDentroDeCuadricula + indicePiezaFantasma) * MEDIDA_CUADRO) + MEDIDA_CUADRO, azul, 2);
+                    al_draw_rectangle((sumaX * MEDIDA_CUADRO) + GROSOR_BORDE, ((YRelativoDentroDeCuadricula + indicePiezaFantasma) * MEDIDA_CUADRO) + GROSOR_BORDE, (sumaX * MEDIDA_CUADRO) + MEDIDA_CUADRO + GROSOR_BORDE, (((YRelativoDentroDeCuadricula + indicePiezaFantasma) * MEDIDA_CUADRO) + MEDIDA_CUADRO) + GROSOR_BORDE, azul, 2);
                     float sx = 0;
                     float sy = 0;
                     float sw = al_get_bitmap_width(imagen_pieza_movimiento);
                     float sh = al_get_bitmap_height(imagen_pieza_movimiento);
 
-                    float dx = sumaX * MEDIDA_CUADRO;
-                    float dy = sumaY * MEDIDA_CUADRO;
+                    float dx = (sumaX * MEDIDA_CUADRO) + GROSOR_BORDE;
+                    float dy = (sumaY * MEDIDA_CUADRO) + GROSOR_BORDE;
                     float dw = MEDIDA_CUADRO;
                     float dh = MEDIDA_CUADRO;
 
@@ -694,9 +686,25 @@ int main()
 
             /*
                     =========================================
-                    Termina dibujo de la pieza
+                    Termina dibujo de la pieza (tetrimino) en movimiento
                     =========================================
             */
+            // Borde separador de puntaje y área de juego
+            al_draw_rectangle(
+                GROSOR_BORDE / 2,
+                GROSOR_BORDE / 2,
+                (ANCHO_CUADRICULA * BITS_EN_UN_BYTE * MEDIDA_CUADRO) + GROSOR_BORDE*1.5,
+                (ALTO_CUADRICULA * MEDIDA_CUADRO) + GROSOR_BORDE * 1.5,
+                color_borde, GROSOR_BORDE);
+            // Y ahora el puntaje
+            al_draw_textf(
+                fuente,
+                blanco,
+                (ANCHO_CUADRICULA * BITS_EN_UN_BYTE * MEDIDA_CUADRO) + GROSOR_BORDE*2,
+                ALTO_CUADRICULA * MEDIDA_CUADRO / 2,
+                ALLEGRO_ALIGN_LEFT,
+                "Puntaje: %d",
+                puntajeGlobal);
 
             al_flip_display();
 

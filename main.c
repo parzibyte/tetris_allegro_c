@@ -15,7 +15,7 @@
 #define MAXIMO_INDICE_BIT_EN_BYTE 7
 #define MAXIMO_INDICE_BIT_EN_UINT16 15
 #define CUADRICULA_TETRIMINO 4
-#define TOTAL_TETRIMINOS_DISPONIBLES 5
+#define TOTAL_TETRIMINOS_DISPONIBLES 7
 #define BITS_POR_FILA_PARA_TETRIMINO 4
 #define MITAD_CUADRICULA_X ANCHO_CUADRICULA *BITS_EN_UN_BYTE / 2 - (BITS_POR_FILA_PARA_TETRIMINO / 2);
 #define GROSOR_BORDE 10
@@ -29,8 +29,76 @@ struct TetriminoParaElegir
 {
     uint16_t cuadricula;
 };
+uint8_t indiceGlobalTetrimino = 0;
 
-struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES];
+void inicializarPiezas(struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES])
+{
+    /*
+    Veamos la Z es
+    1100
+    0110
+    0000
+    0000
+
+    Que sería C6
+     */
+    piezas[0].cuadricula = 0xC600;
+    /*
+    La L es
+    1000
+    1000
+    1100
+    0000
+    Que sería 88C0
+    */
+    piezas[1].cuadricula = 0x88C0;
+    /*
+    Ahora una línea
+    1111
+    0000
+    0000
+    0000
+    Solo sería F000
+    */
+    piezas[2].cuadricula = 0xF000;
+    /*
+    Ahora el cuadro
+    1100
+    1100
+    0000
+    0000
+    Que sería CC00
+    */
+    piezas[3].cuadricula = 0xCC00;
+    /*
+    Ahora la T
+    Esa es
+    1110
+    0100
+    0000
+    0000
+    Que sería E400
+    */
+    piezas[4].cuadricula = 0xE400;
+    /*
+    La L invertida que sería
+    1110
+    0010
+    0000
+    0000
+    E200
+    */
+    piezas[5].cuadricula = 0xe200;
+    /*
+    La Z invertida que sería
+    0110
+    1100
+    0000
+    0000
+    6C00
+     */
+    piezas[6].cuadricula = 0x6c00;
+}
 uint16_t rotar90CW(uint16_t pieza)
 {
     // (x', y') = ( y, 3 - x )
@@ -111,10 +179,10 @@ uint16_t rotar90CW(uint16_t pieza)
     }
     return rotado;
 }
-void elegirPiezaAleatoria(struct Tetrimino *destino)
+void elegirPiezaAleatoria(struct Tetrimino *destino, struct TetriminoParaElegir piezasDisponibles[TOTAL_TETRIMINOS_DISPONIBLES])
 {
     uint8_t indiceAleatorio = rand() % TOTAL_TETRIMINOS_DISPONIBLES;
-    destino->cuadricula = piezas[indiceAleatorio].cuadricula;
+    destino->cuadricula = piezasDisponibles[indiceAleatorio].cuadricula;
     destino->x = MITAD_CUADRICULA_X;
     destino->y = 0;
 }
@@ -277,7 +345,7 @@ void limpiarFilaYBajarFilasSuperiores(int8_t indiceFila, uint8_t cuadricula[ALTO
     memset(cuadricula[0], 0, sizeof(cuadricula[0]));
 }
 
-void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA], bool *bandera, unsigned long *puntajeGlobal, bool *juegoTerminado)
+void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA], bool *bandera, unsigned long *puntajeGlobal, bool *juegoTerminado, struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES])
 {
     if (!tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 1))
     {
@@ -340,7 +408,7 @@ void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRIC
                 }
             }
             printf("Puntaje actual: %lu\n", *puntajeGlobal);
-            elegirPiezaAleatoria(tetrimino);
+            elegirPiezaAleatoria(tetrimino, piezas);
             if (tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 0))
             {
                 *juegoTerminado = true;
@@ -357,6 +425,7 @@ void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRIC
 int main()
 {
     srand(time(NULL));
+    struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES];
     al_init();
     al_init_primitives_addon();
     al_install_keyboard();
@@ -430,53 +499,7 @@ int main()
         {0, 0},
         {0, 0},
     };
-    /*
-    Veamos la Z es
-    1100
-    0110
-    0000
-    0000
-
-    Que sería C6
-     */
-    piezas[0].cuadricula = 0xC600;
-    /*
-    La L es
-    1000
-    1000
-    1100
-    0000
-    Que sería 88C0
-    */
-    piezas[1].cuadricula = 0x88C0;
-    /*
-    Ahora una línea
-    1111
-    0000
-    0000
-    0000
-    Solo sería F000
-    */
-    piezas[2].cuadricula = 0xF000;
-    /*
-    Ahora el cuadro
-    1100
-    1100
-    0000
-    0000
-    Que sería CC00
-    */
-    piezas[3].cuadricula = 0xCC00;
-    /*
-    Ahora la T
-    Esa es
-    1110
-    0100
-    0000
-    0000
-    Que sería E400
-    */
-    piezas[4].cuadricula = 0xE400;
+    inicializarPiezas(piezas);
     al_init_font_addon();
     al_init_ttf_addon();
     ALLEGRO_FONT *fuente = al_load_font("arial.ttf", 20, 0);
@@ -501,11 +524,7 @@ int main()
     204
     */
     // encendidos en cada bit
-    elegirPiezaAleatoria(&linea);
-    // linea.cuadricula[0] = 228;
-    // linea.cuadricula[1] = 0;
-    // linea.x = 0;
-    // linea.y = 0;
+    elegirPiezaAleatoria(&linea, piezas);
     bool banderaTocoSuelo = false;
     bool juegoTerminado = false;
     unsigned long puntajeGlobal = 0;
@@ -524,7 +543,7 @@ int main()
             {
                 if (!juegoTerminado)
                 {
-                    bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado);
+                    bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas);
                 }
             }
         }
@@ -538,11 +557,11 @@ int main()
                 {
                     linea.y = indiceYParaFantasma(&linea, otraCuadricula);
                     banderaTocoSuelo = true;
-                    bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado);
+                    bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas);
                 }
                 else if (teclaPresionada == ALLEGRO_KEY_J || teclaPresionada == ALLEGRO_KEY_DOWN)
                 {
-                    bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado);
+                    bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas);
                 }
                 else if (teclaPresionada == ALLEGRO_KEY_H || teclaPresionada == ALLEGRO_KEY_LEFT)
                 {
@@ -571,7 +590,7 @@ int main()
                 puntajeGlobal = 0;
                 memset(otraCuadricula, 0, ANCHO_CUADRICULA * ALTO_CUADRICULA);
                 juegoTerminado = false;
-                elegirPiezaAleatoria(&linea);
+                elegirPiezaAleatoria(&linea, piezas);
             }
         }
         else if ((event.type == ALLEGRO_EVENT_DISPLAY_CLOSE))
@@ -703,7 +722,7 @@ int main()
                 (ANCHO_CUADRICULA * BITS_EN_UN_BYTE * MEDIDA_CUADRO) + GROSOR_BORDE * 2,
                 ALTO_CUADRICULA * MEDIDA_CUADRO / 2,
                 ALLEGRO_ALIGN_LEFT,
-                "Puntaje: %d",
+                "Puntaje: %lu",
                 puntajeGlobal);
 
             al_flip_display();

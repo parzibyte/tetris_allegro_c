@@ -31,6 +31,27 @@ struct TetriminoParaElegir
 };
 uint8_t indiceGlobalTetrimino = 0;
 
+void aleatorizarPiezas(struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES])
+{
+    /*
+     Cantidad = Tamaño(Array)
+     Recorrer con k desde Cantidad-1 hasta 1 Regresivamente
+        az = Random(entre 0 y k)
+
+        tmp = Array(az)
+        Array(az) = Array(k)
+        Array(k) = tmp
+     Siguiente
+     */
+
+    for (int k = TOTAL_TETRIMINOS_DISPONIBLES - 1; k > 0; k--)
+    {
+        uint8_t az = rand() % (k + 1);
+        struct TetriminoParaElegir tmp = piezas[az];
+        piezas[az] = piezas[k];
+        piezas[k] = tmp;
+    }
+}
 void inicializarPiezas(struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES])
 {
     /*
@@ -181,10 +202,16 @@ uint16_t rotar90CW(uint16_t pieza)
 }
 void elegirPiezaAleatoria(struct Tetrimino *destino, struct TetriminoParaElegir piezasDisponibles[TOTAL_TETRIMINOS_DISPONIBLES])
 {
-    uint8_t indiceAleatorio = rand() % TOTAL_TETRIMINOS_DISPONIBLES;
-    destino->cuadricula = piezasDisponibles[indiceAleatorio].cuadricula;
+    destino->cuadricula = piezasDisponibles[indiceGlobalTetrimino].cuadricula;
     destino->x = MITAD_CUADRICULA_X;
     destino->y = 0;
+    indiceGlobalTetrimino++;
+    if (indiceGlobalTetrimino > TOTAL_TETRIMINOS_DISPONIBLES - 1)
+    {
+
+        aleatorizarPiezas(piezasDisponibles);
+        indiceGlobalTetrimino = 0;
+    }
 }
 
 /*
@@ -504,26 +531,6 @@ int main()
     al_init_ttf_addon();
     ALLEGRO_FONT *fuente = al_load_font("arial.ttf", 20, 0);
     struct Tetrimino linea;
-    // Linea acostada es 240 porque necesitamos encendidos los primeros 4 bits
-    // Línea vertical sería 136 y 136 porque necesitamos el bit 1 y 4 (128 y 8)
-    /*
-    1110
-    0100
-    0000
-    0000
-    Primer byte: 11100100
-    4+128+64+32
-    228
-
-    1100
-    1100
-    0000
-    0000
-    11001100
-    12+128+64
-    204
-    */
-    // encendidos en cada bit
     elegirPiezaAleatoria(&linea, piezas);
     bool banderaTocoSuelo = false;
     bool juegoTerminado = false;

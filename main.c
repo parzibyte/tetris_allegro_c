@@ -31,6 +31,27 @@ struct TetriminoParaElegir
 };
 uint8_t indiceGlobalTetrimino = 0;
 
+void elegirPiezaAleatoria(struct Tetrimino *destino, struct TetriminoParaElegir piezasDisponibles[TOTAL_TETRIMINOS_DISPONIBLES])
+{
+    destino->cuadricula = piezasDisponibles[indiceGlobalTetrimino].cuadricula;
+    destino->x = MITAD_CUADRICULA_X;
+    destino->y = 0;
+    indiceGlobalTetrimino++;
+    if (indiceGlobalTetrimino > TOTAL_TETRIMINOS_DISPONIBLES - 1)
+    {
+
+        aleatorizarPiezas(piezasDisponibles);
+        indiceGlobalTetrimino = 0;
+    }
+}
+void elegirSiguientePieza(struct Tetrimino *actual, struct Tetrimino *siguiente, struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES])
+{
+    actual->cuadricula = siguiente->cuadricula;
+    actual->x = siguiente->x = MITAD_CUADRICULA_X;
+    actual->y = siguiente->y = 0;
+    elegirPiezaAleatoria(siguiente, piezas);
+}
+
 void aleatorizarPiezas(struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES])
 {
     /*
@@ -200,19 +221,6 @@ uint16_t rotar90CW(uint16_t pieza)
     }
     return rotado;
 }
-void elegirPiezaAleatoria(struct Tetrimino *destino, struct TetriminoParaElegir piezasDisponibles[TOTAL_TETRIMINOS_DISPONIBLES])
-{
-    destino->cuadricula = piezasDisponibles[indiceGlobalTetrimino].cuadricula;
-    destino->x = MITAD_CUADRICULA_X;
-    destino->y = 0;
-    indiceGlobalTetrimino++;
-    if (indiceGlobalTetrimino > TOTAL_TETRIMINOS_DISPONIBLES - 1)
-    {
-
-        aleatorizarPiezas(piezasDisponibles);
-        indiceGlobalTetrimino = 0;
-    }
-}
 
 /*
 Recibe un apuntador al tetrimino y la cuadrícula del tetris
@@ -372,7 +380,7 @@ void limpiarFilaYBajarFilasSuperiores(int8_t indiceFila, uint8_t cuadricula[ALTO
     memset(cuadricula[0], 0, sizeof(cuadricula[0]));
 }
 
-void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA], bool *bandera, unsigned long *puntajeGlobal, bool *juegoTerminado, struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES])
+void bajarTetrimino(struct Tetrimino *tetrimino, struct Tetrimino *siguiente, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA], bool *bandera, unsigned long *puntajeGlobal, bool *juegoTerminado, struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES])
 {
     if (!tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 1))
     {
@@ -434,8 +442,7 @@ void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRIC
                     lineasEliminadasConsecutivamente++;
                 }
             }
-            printf("Puntaje actual: %lu\n", *puntajeGlobal);
-            elegirPiezaAleatoria(tetrimino, piezas);
+            elegirSiguientePieza(tetrimino, siguiente, piezas);
             if (tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 0))
             {
                 *juegoTerminado = true;
@@ -452,7 +459,6 @@ void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRIC
 int main()
 {
     srand(time(NULL));
-    struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES];
     al_init();
     al_init_primitives_addon();
     al_install_keyboard();
@@ -526,12 +532,16 @@ int main()
         {0, 0},
         {0, 0},
     };
+    struct Tetrimino piezaActual;
+    struct Tetrimino piezaSiguiente;
+    struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES];
     inicializarPiezas(piezas);
+    aleatorizarPiezas(piezas);
+    elegirPiezaAleatoria(&piezaActual, piezas);
+    elegirPiezaAleatoria(&piezaSiguiente, piezas);
     al_init_font_addon();
     al_init_ttf_addon();
     ALLEGRO_FONT *fuente = al_load_font("arial.ttf", 20, 0);
-    struct Tetrimino linea;
-    elegirPiezaAleatoria(&linea, piezas);
     bool banderaTocoSuelo = false;
     bool juegoTerminado = false;
     unsigned long puntajeGlobal = 0;
@@ -550,7 +560,7 @@ int main()
             {
                 if (!juegoTerminado)
                 {
-                    bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas);
+                    bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas);
                 }
             }
         }
@@ -562,33 +572,33 @@ int main()
 
                 if (teclaPresionada == ALLEGRO_KEY_UP || teclaPresionada == ALLEGRO_KEY_K)
                 {
-                    linea.y = indiceYParaFantasma(&linea, otraCuadricula);
+                    piezaActual.y = indiceYParaFantasma(&piezaActual, otraCuadricula);
                     banderaTocoSuelo = true;
-                    bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas);
+                    bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas);
                 }
                 else if (teclaPresionada == ALLEGRO_KEY_J || teclaPresionada == ALLEGRO_KEY_DOWN)
                 {
-                    bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas);
+                    bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas);
                 }
                 else if (teclaPresionada == ALLEGRO_KEY_H || teclaPresionada == ALLEGRO_KEY_LEFT)
                 {
-                    if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, -1, 0))
+                    if (!tetriminoColisionaConCuadriculaAlAvanzar(&piezaActual, otraCuadricula, -1, 0))
                     {
-                        linea.x--;
+                        piezaActual.x--;
                     }
                 }
                 else if (teclaPresionada == ALLEGRO_KEY_L || teclaPresionada == ALLEGRO_KEY_RIGHT)
                 {
-                    if (!tetriminoColisionaConCuadriculaAlAvanzar(&linea, otraCuadricula, 1, 0))
+                    if (!tetriminoColisionaConCuadriculaAlAvanzar(&piezaActual, otraCuadricula, 1, 0))
                     {
-                        linea.x++;
+                        piezaActual.x++;
                     }
                 }
                 else if (teclaPresionada == ALLEGRO_KEY_SPACE)
                 {
-                    if (!tetriminoColisionaConCuadriculaAlRotar(&linea, otraCuadricula))
+                    if (!tetriminoColisionaConCuadriculaAlRotar(&piezaActual, otraCuadricula))
                     {
-                        linea.cuadricula = rotar90CW(linea.cuadricula);
+                        piezaActual.cuadricula = rotar90CW(piezaActual.cuadricula);
                     }
                 }
             }
@@ -597,7 +607,7 @@ int main()
                 puntajeGlobal = 0;
                 memset(otraCuadricula, 0, ANCHO_CUADRICULA * ALTO_CUADRICULA);
                 juegoTerminado = false;
-                elegirPiezaAleatoria(&linea, piezas);
+                elegirSiguientePieza(&piezaActual, &piezaSiguiente, piezas);
             }
         }
         else if ((event.type == ALLEGRO_EVENT_DISPLAY_CLOSE))
@@ -681,7 +691,7 @@ int main()
             for (uint8_t indiceBit = 0; indiceBit < BITS_EN_UINT16; indiceBit++)
             {
 
-                bool hayUnCuadroDeTetriminoEnLaCoordenadaActual = (linea.cuadricula >> (MAXIMO_INDICE_BIT_EN_UINT16 - indiceBit)) & 1;
+                bool hayUnCuadroDeTetriminoEnLaCoordenadaActual = (piezaActual.cuadricula >> (MAXIMO_INDICE_BIT_EN_UINT16 - indiceBit)) & 1;
                 if (hayUnCuadroDeTetriminoEnLaCoordenadaActual)
                 {
                     // Llegados aquí sabemos que el "continue" no se ejecutó y que SÍ hay un tetrimino
@@ -689,11 +699,12 @@ int main()
                     // Coordenadas sobre la cuadrícula después de aplicar los modificadores
                     uint8_t xRelativoDentroDeCuadricula = indiceBit % BITS_POR_FILA_PARA_TETRIMINO;
                     uint8_t YRelativoDentroDeCuadricula = indiceBit / BITS_POR_FILA_PARA_TETRIMINO;
-                    int sumaX = linea.x + xRelativoDentroDeCuadricula;
-                    int sumaY = linea.y + YRelativoDentroDeCuadricula;
-                    int8_t indicePiezaFantasma = indiceYParaFantasma(&linea, otraCuadricula);
-
+                    int sumaX = piezaActual.x + xRelativoDentroDeCuadricula;
+                    int sumaY = piezaActual.y + YRelativoDentroDeCuadricula;
+                    int8_t indicePiezaFantasma = indiceYParaFantasma(&piezaActual, otraCuadricula);
+                    // Este es el fantasma
                     al_draw_rectangle((sumaX * MEDIDA_CUADRO) + GROSOR_BORDE, ((YRelativoDentroDeCuadricula + indicePiezaFantasma) * MEDIDA_CUADRO) + GROSOR_BORDE, (sumaX * MEDIDA_CUADRO) + MEDIDA_CUADRO + GROSOR_BORDE, (((YRelativoDentroDeCuadricula + indicePiezaFantasma) * MEDIDA_CUADRO) + MEDIDA_CUADRO) + GROSOR_BORDE, azul, 2);
+                    // Y esta es la pieza en movimiento
                     float sx = 0;
                     float sy = 0;
                     float sw = al_get_bitmap_width(imagen_pieza_movimiento);
@@ -715,6 +726,47 @@ int main()
                     Termina dibujo de la pieza (tetrimino) en movimiento
                     =========================================
             */
+
+            /*
+                    =========================================
+                    Empieza dibujo de la pieza (tetrimino) siguiente
+                    =========================================
+            */
+            al_draw_textf(
+                fuente,
+                blanco,
+                (ANCHO_CUADRICULA * BITS_EN_UN_BYTE * MEDIDA_CUADRO) + GROSOR_BORDE * 2,
+                GROSOR_BORDE,
+                ALLEGRO_ALIGN_LEFT,
+                "Siguiente");
+            for (uint8_t indiceBit = 0; indiceBit < BITS_EN_UINT16; indiceBit++)
+            {
+                bool hayUnCuadroDeTetriminoEnLaCoordenadaActual = (piezaSiguiente.cuadricula >> (MAXIMO_INDICE_BIT_EN_UINT16 - indiceBit)) & 1;
+                if (hayUnCuadroDeTetriminoEnLaCoordenadaActual)
+                {
+                    // Llegados aquí sabemos que el "continue" no se ejecutó y que SÍ hay un tetrimino
+
+                    // Coordenadas sobre la cuadrícula después de aplicar los modificadores
+                    uint8_t xRelativoDentroDeCuadricula = indiceBit % BITS_POR_FILA_PARA_TETRIMINO;
+                    uint8_t YRelativoDentroDeCuadricula = indiceBit / BITS_POR_FILA_PARA_TETRIMINO;
+                    int sumaX = 50 + (ANCHO_CUADRICULA * BITS_EN_UN_BYTE * MEDIDA_CUADRO) + GROSOR_BORDE * 2 + xRelativoDentroDeCuadricula * MEDIDA_CUADRO;
+                    int sumaY = 50 + GROSOR_BORDE + YRelativoDentroDeCuadricula * MEDIDA_CUADRO;
+                    float sx = 0;
+                    float sy = 0;
+                    float sw = al_get_bitmap_width(imagen_pieza_movimiento);
+                    float sh = al_get_bitmap_height(imagen_pieza_movimiento);
+
+                    float dx = (sumaX * MEDIDA_CUADRO) + GROSOR_BORDE;
+                    float dy = (sumaY * MEDIDA_CUADRO) + GROSOR_BORDE;
+                    float dw = MEDIDA_CUADRO;
+                    float dh = MEDIDA_CUADRO;
+
+                    al_draw_scaled_bitmap(imagen_pieza_movimiento,
+                                          sx, sy, sw, sh,
+                                          sumaX, sumaY, dw, dh, 0);
+                }
+            }
+
             // Borde separador de puntaje y área de juego
             al_draw_rectangle(
                 GROSOR_BORDE / 2,

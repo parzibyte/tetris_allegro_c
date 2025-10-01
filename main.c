@@ -344,7 +344,6 @@ void bajarTetrimino(struct Tetrimino *tetrimino, uint8_t cuadricula[ALTO_CUADRIC
             if (tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 0))
             {
                 *juegoTerminado = true;
-                *puntajeGlobal = 0;
             }
         }
         else
@@ -525,7 +524,7 @@ int main()
             {
                 if (!juegoTerminado)
                 {
-                    // bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado);
+                    bajarTetrimino(&linea, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado);
                 }
             }
         }
@@ -569,6 +568,7 @@ int main()
             }
             else
             {
+                puntajeGlobal = 0;
                 memset(otraCuadricula, 0, ANCHO_CUADRICULA * ALTO_CUADRICULA);
                 juegoTerminado = false;
                 elegirPiezaAleatoria(&linea);
@@ -622,8 +622,8 @@ int main()
 
                             float dx = xCoordenada + GROSOR_BORDE;
                             float dy = yCoordenada + GROSOR_BORDE;
-                            float dw = MEDIDA_CUADRO ;
-                            float dh = MEDIDA_CUADRO ;
+                            float dw = MEDIDA_CUADRO;
+                            float dh = MEDIDA_CUADRO;
 
                             al_draw_scaled_bitmap(imagen_pieza_caida,
                                                   0, 0, sw, sh,
@@ -633,7 +633,7 @@ int main()
                         else
                         {
                             // Si no, un rectángulo negro que coincida con el fondo
-                            al_draw_filled_rectangle(xCoordenada + GROSOR_BORDE, yCoordenada+ GROSOR_BORDE, xCoordenada + MEDIDA_CUADRO+GROSOR_BORDE, yCoordenada + MEDIDA_CUADRO+GROSOR_BORDE, encendido == 0 ? negro : rojo);
+                            al_draw_filled_rectangle(xCoordenada + GROSOR_BORDE, yCoordenada + GROSOR_BORDE, xCoordenada + MEDIDA_CUADRO + GROSOR_BORDE, yCoordenada + MEDIDA_CUADRO + GROSOR_BORDE, encendido == 0 ? negro : rojo);
                         }
 
                         xCoordenada += MEDIDA_CUADRO;
@@ -693,14 +693,14 @@ int main()
             al_draw_rectangle(
                 GROSOR_BORDE / 2,
                 GROSOR_BORDE / 2,
-                (ANCHO_CUADRICULA * BITS_EN_UN_BYTE * MEDIDA_CUADRO) + GROSOR_BORDE*1.5,
+                (ANCHO_CUADRICULA * BITS_EN_UN_BYTE * MEDIDA_CUADRO) + GROSOR_BORDE * 1.5,
                 (ALTO_CUADRICULA * MEDIDA_CUADRO) + GROSOR_BORDE * 1.5,
                 color_borde, GROSOR_BORDE);
             // Y ahora el puntaje
             al_draw_textf(
                 fuente,
                 blanco,
-                (ANCHO_CUADRICULA * BITS_EN_UN_BYTE * MEDIDA_CUADRO) + GROSOR_BORDE*2,
+                (ANCHO_CUADRICULA * BITS_EN_UN_BYTE * MEDIDA_CUADRO) + GROSOR_BORDE * 2,
                 ALTO_CUADRICULA * MEDIDA_CUADRO / 2,
                 ALLEGRO_ALIGN_LEFT,
                 "Puntaje: %d",

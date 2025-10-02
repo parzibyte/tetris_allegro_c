@@ -380,7 +380,7 @@ void limpiarFilaYBajarFilasSuperiores(int8_t indiceFila, uint8_t cuadricula[ALTO
     memset(cuadricula[0], 0, sizeof(cuadricula[0]));
 }
 
-void bajarTetrimino(struct Tetrimino *tetrimino, struct Tetrimino *siguiente, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA], bool *bandera, unsigned long *puntajeGlobal, bool *juegoTerminado, struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES])
+void bajarTetrimino(struct Tetrimino *tetrimino, struct Tetrimino *siguiente, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA], bool *bandera, unsigned long *puntajeGlobal, bool *juegoTerminado, struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES], bool *haUsadoReserva)
 {
     if (!tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 1))
     {
@@ -447,6 +447,9 @@ void bajarTetrimino(struct Tetrimino *tetrimino, struct Tetrimino *siguiente, ui
             {
                 *juegoTerminado = true;
             }
+            // Llegados hasta este punto sabemos que podemos aparecer la nueva pieza y que sí hay
+            // espacio para ella.
+            *haUsadoReserva = false;
         }
         else
         {
@@ -534,7 +537,9 @@ int main()
     };
     struct Tetrimino piezaActual;
     struct Tetrimino piezaSiguiente;
+    struct Tetrimino reserva = {0};
     struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES];
+    bool haUsadoLaReserva = false;
     inicializarPiezas(piezas);
     aleatorizarPiezas(piezas);
     elegirPiezaAleatoria(&piezaActual, piezas);
@@ -560,7 +565,7 @@ int main()
             {
                 if (!juegoTerminado)
                 {
-                    bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas);
+                    bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas, &haUsadoLaReserva);
                 }
             }
         }
@@ -574,11 +579,11 @@ int main()
                 {
                     piezaActual.y = indiceYParaFantasma(&piezaActual, otraCuadricula);
                     banderaTocoSuelo = true;
-                    bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas);
+                    bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas, &haUsadoLaReserva);
                 }
                 else if (teclaPresionada == ALLEGRO_KEY_J || teclaPresionada == ALLEGRO_KEY_DOWN)
                 {
-                    bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas);
+                    bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas, &haUsadoLaReserva);
                 }
                 else if (teclaPresionada == ALLEGRO_KEY_H || teclaPresionada == ALLEGRO_KEY_LEFT)
                 {
@@ -600,6 +605,35 @@ int main()
                     {
                         piezaActual.cuadricula = rotar90CW(piezaActual.cuadricula);
                     }
+                }
+                else if (teclaPresionada == ALLEGRO_KEY_Q)
+                {
+                    if (reserva.cuadricula == 0)
+                    {
+                        reserva.cuadricula = piezaActual.cuadricula;
+                        reserva.x = MITAD_CUADRICULA_X;
+                        reserva.y = 0;
+                        elegirSiguientePieza(&piezaActual, &piezaSiguiente, piezas);
+                    }
+                    else
+                    {
+                        if (!haUsadoLaReserva)
+                        {
+                            /*
+                            Aquí no recuerdo si está bien reiniciar la x e y o dejarla como
+                            está. Si la dejáramos como está sería más complejo para el jugador,
+                            así que yo pongo la pieza en y=0, o sea, hasta arriba, así le da un respiro al jugador
+                            */
+                            struct Tetrimino temporal = {0};
+                            temporal.cuadricula = piezaActual.cuadricula;
+                            piezaActual.cuadricula = reserva.cuadricula;
+                            reserva.cuadricula = temporal.cuadricula;
+                            piezaActual.x = MITAD_CUADRICULA_X;
+                            piezaActual.y = 0;
+                            haUsadoLaReserva = true;
+                        }
+                    }
+                    // printf("La reserva es %x, es 0? %d", reserva.cuadricula, reserva.cuadricula==0);
                 }
             }
             else
@@ -764,6 +798,49 @@ int main()
                     al_draw_scaled_bitmap(imagen_pieza_movimiento,
                                           sx, sy, sw, sh,
                                           sumaX, sumaY, dw, dh, 0);
+                }
+            }
+
+            /*
+                    =========================================
+                    Empieza dibujo de la pieza (tetrimino) reserva
+                    =========================================
+            */
+            al_draw_textf(
+                fuente,
+                blanco,
+                (ANCHO_CUADRICULA * BITS_EN_UN_BYTE * MEDIDA_CUADRO) + GROSOR_BORDE * 2,
+                170,
+                ALLEGRO_ALIGN_LEFT,
+                "Reserva");
+            if (reserva.cuadricula != 0)
+            {
+                for (uint8_t indiceBit = 0; indiceBit < BITS_EN_UINT16; indiceBit++)
+                {
+                    bool hayUnCuadroDeTetriminoEnLaCoordenadaActual = (reserva.cuadricula >> (MAXIMO_INDICE_BIT_EN_UINT16 - indiceBit)) & 1;
+                    if (hayUnCuadroDeTetriminoEnLaCoordenadaActual)
+                    {
+                        // Llegados aquí sabemos que el "continue" no se ejecutó y que SÍ hay un tetrimino
+
+                        // Coordenadas sobre la cuadrícula después de aplicar los modificadores
+                        uint8_t xRelativoDentroDeCuadricula = indiceBit % BITS_POR_FILA_PARA_TETRIMINO;
+                        uint8_t YRelativoDentroDeCuadricula = indiceBit / BITS_POR_FILA_PARA_TETRIMINO;
+                        int sumaX = 50 + (ANCHO_CUADRICULA * BITS_EN_UN_BYTE * MEDIDA_CUADRO) + GROSOR_BORDE * 2 + xRelativoDentroDeCuadricula * MEDIDA_CUADRO;
+                        int sumaY = 200 + GROSOR_BORDE + YRelativoDentroDeCuadricula * MEDIDA_CUADRO;
+                        float sx = 0;
+                        float sy = 0;
+                        float sw = al_get_bitmap_width(imagen_pieza_movimiento);
+                        float sh = al_get_bitmap_height(imagen_pieza_movimiento);
+
+                        float dx = (sumaX * MEDIDA_CUADRO) + GROSOR_BORDE;
+                        float dy = (sumaY * MEDIDA_CUADRO) + GROSOR_BORDE;
+                        float dw = MEDIDA_CUADRO;
+                        float dh = MEDIDA_CUADRO;
+
+                        al_draw_scaled_bitmap(imagen_pieza_movimiento,
+                                              sx, sy, sw, sh,
+                                              sumaX, sumaY, dw, dh, 0);
+                    }
                 }
             }
 

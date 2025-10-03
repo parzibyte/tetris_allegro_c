@@ -6,6 +6,8 @@
 #include <allegro5/allegro_ttf.h>
 #include <stdbool.h>
 #include <allegro5/allegro_image.h>
+#include <allegro5/allegro_audio.h>
+#include <allegro5/allegro_acodec.h>
 #define OFFSET_X 200
 #define MEDIDA_CUADRO 32
 #define ANCHO_CUADRICULA 2 // Recuerda que se multiplicará por BITS_EN_UN_BYTE así que si es 2 en realidad es 16
@@ -19,6 +21,15 @@
 #define BITS_POR_FILA_PARA_TETRIMINO 4
 #define MITAD_CUADRICULA_X ANCHO_CUADRICULA *BITS_EN_UN_BYTE / 2 - (BITS_POR_FILA_PARA_TETRIMINO / 2);
 #define GROSOR_BORDE 10
+typedef enum
+{
+    MENOS_DE_CUATRO_LINEAS,
+    CUATRO_LINEAS_O_MAS,
+    TOCADO_LIMITE, // Ya está a punto de ser parte de la cuadrícula
+    NADA,          // Bajó normalmente y no eliminó líneas
+    ACOMODADA,     // Ya es parte de la cuadrícula
+    CANTIDAD_ESTADOS_BAJAR
+} ResultadoAlBajar;
 
 struct Tetrimino
 {
@@ -380,12 +391,13 @@ void limpiarFilaYBajarFilasSuperiores(int8_t indiceFila, uint8_t cuadricula[ALTO
     memset(cuadricula[0], 0, sizeof(cuadricula[0]));
 }
 
-void bajarTetrimino(struct Tetrimino *tetrimino, struct Tetrimino *siguiente, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA], bool *bandera, unsigned long *puntajeGlobal, bool *juegoTerminado, struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES], bool *haUsadoReserva)
+ResultadoAlBajar bajarTetrimino(struct Tetrimino *tetrimino, struct Tetrimino *siguiente, uint8_t cuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA], bool *bandera, unsigned long *puntajeGlobal, bool *juegoTerminado, struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES], bool *haUsadoReserva)
 {
     if (!tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 1))
     {
         tetrimino->y++;
         *bandera = false;
+        return NADA;
     }
     else
     {
@@ -431,9 +443,7 @@ void bajarTetrimino(struct Tetrimino *tetrimino, struct Tetrimino *siguiente, ui
                 // No hay filas llenas. Nada que limpiar
                 if (posibleIndiceFilaLlena == -1)
                 {
-                    printf("Líneas consecutivas: %d\n", lineasEliminadasConsecutivamente);
                     *puntajeGlobal += lineasEliminadasConsecutivamente;
-                    lineasEliminadasConsecutivamente = 0;
                     break;
                 }
                 else
@@ -442,6 +452,8 @@ void bajarTetrimino(struct Tetrimino *tetrimino, struct Tetrimino *siguiente, ui
                     lineasEliminadasConsecutivamente++;
                 }
             }
+
+            printf("Líneas consecutivas: %d\n", lineasEliminadasConsecutivamente);
             elegirSiguientePieza(tetrimino, siguiente, piezas);
             if (tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 0))
             {
@@ -450,11 +462,24 @@ void bajarTetrimino(struct Tetrimino *tetrimino, struct Tetrimino *siguiente, ui
             // Llegados hasta este punto sabemos que podemos aparecer la nueva pieza y que sí hay
             // espacio para ella.
             *haUsadoReserva = false;
+            if (lineasEliminadasConsecutivamente > 0 && lineasEliminadasConsecutivamente < 4)
+            {
+                return MENOS_DE_CUATRO_LINEAS;
+            }
+            else if (lineasEliminadasConsecutivamente >= 4)
+            {
+                return CUATRO_LINEAS_O_MAS;
+            }
+            else
+            {
+                return ACOMODADA;
+            }
         }
         else
         {
             // No puedes bajar pero te doy un tiempo para que te puedas mover
             *bandera = true;
+            return TOCADO_LIMITE;
         }
     }
 }
@@ -468,6 +493,52 @@ int main()
     if (!al_init_image_addon())
     {
         fprintf(stderr, "Error inicializando librería imagen");
+    }
+    if (!al_install_audio())
+    {
+        fprintf(stderr, "Error inicializando audio\n");
+        return -1;
+    }
+
+    if (!al_init_acodec_addon())
+    {
+        fprintf(stderr, "Error inicializando codec addon\n");
+        return -1;
+    }
+
+    if (!al_reserve_samples(2))
+    {
+        fprintf(stderr, "Error reserve_samples\n");
+        return -1;
+    }
+    ALLEGRO_AUDIO_STREAM *musica_fondo = NULL;
+    musica_fondo = al_load_audio_stream("01. Bulby - Super Mario Bros. Wonder 8 Bit VRC6.mp3", 4, 2048);
+    if (!musica_fondo)
+    {
+        fprintf(stderr, "Error cargando audio_stream\n");
+        return;
+    }
+
+    al_attach_audio_stream_to_mixer(musica_fondo, al_get_default_mixer());
+    al_set_audio_stream_playmode(musica_fondo, ALLEGRO_PLAYMODE_LOOP);
+    al_set_audio_stream_playing(musica_fondo, true);
+    ALLEGRO_SAMPLE *sonido_una_linea = NULL;
+    ALLEGRO_SAMPLE *sonido_4_lineas = NULL;
+    ALLEGRO_SAMPLE_ID id_sonido_una_linea;
+    ALLEGRO_SAMPLE_ID id_sonido_4_lineas;
+
+    sonido_una_linea = al_load_sample("397819__swordmaster767__powerup.wav");
+    if (!sonido_una_linea)
+    {
+        fprintf(stderr, "Error cargando sonido linea\n");
+        return;
+    }
+
+    sonido_4_lineas = al_load_sample("528958__beetlemuse__level-up-mission-complete.wav");
+    if (!sonido_4_lineas)
+    {
+        fprintf(stderr, "Error cargando sonido 4 lineas\n");
+        return;
     }
     ALLEGRO_BITMAP *imagen_pieza_caida = NULL;
     ALLEGRO_BITMAP *imagen_pieza_movimiento = NULL;
@@ -565,7 +636,30 @@ int main()
             {
                 if (!juegoTerminado)
                 {
-                    bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas, &haUsadoLaReserva);
+                    ResultadoAlBajar r = bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas, &haUsadoLaReserva);
+                    switch (r)
+                    {
+                    case CUATRO_LINEAS_O_MAS:
+                        al_play_sample(
+                            sonido_4_lineas,
+                            1.0,
+                            0.0,
+                            1.0,
+                            ALLEGRO_PLAYMODE_ONCE,
+                            &id_sonido_4_lineas);
+                        break;
+                    case MENOS_DE_CUATRO_LINEAS:
+                        al_play_sample(
+                            sonido_una_linea,
+                            1.0,
+                            0.0,
+                            1.0,
+                            ALLEGRO_PLAYMODE_ONCE,
+                            &sonido_una_linea);
+                        break;
+                    default:
+                        break;
+                    }
                 }
             }
         }
@@ -579,11 +673,58 @@ int main()
                 {
                     piezaActual.y = indiceYParaFantasma(&piezaActual, otraCuadricula);
                     banderaTocoSuelo = true;
-                    bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas, &haUsadoLaReserva);
+                    ResultadoAlBajar r = bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas, &haUsadoLaReserva);
+                    printf("Resultado %d", r);
+                    switch (r)
+                    {
+                    case CUATRO_LINEAS_O_MAS:
+                        al_play_sample(
+                            sonido_4_lineas,
+                            1.0,
+                            0.0,
+                            1.0,
+                            ALLEGRO_PLAYMODE_ONCE,
+                            &id_sonido_4_lineas);
+                        break;
+                    case MENOS_DE_CUATRO_LINEAS:
+                        al_play_sample(
+                            sonido_una_linea,
+                            1.0,
+                            0.0,
+                            1.0,
+                            ALLEGRO_PLAYMODE_ONCE,
+                            &id_sonido_una_linea);
+                        break;
+                    default:
+                        break;
+                    }
                 }
                 else if (teclaPresionada == ALLEGRO_KEY_J || teclaPresionada == ALLEGRO_KEY_DOWN)
                 {
-                    bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas, &haUsadoLaReserva);
+                    ResultadoAlBajar r = bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas, &haUsadoLaReserva);
+                    switch (r)
+                    {
+                    case CUATRO_LINEAS_O_MAS:
+                        al_play_sample(
+                            sonido_4_lineas,
+                            1.0,
+                            0.0,
+                            1.0,
+                            ALLEGRO_PLAYMODE_ONCE,
+                            &id_sonido_4_lineas);
+                        break;
+                    case MENOS_DE_CUATRO_LINEAS:
+                        al_play_sample(
+                            sonido_una_linea,
+                            1.0,
+                            0.0,
+                            1.0,
+                            ALLEGRO_PLAYMODE_ONCE,
+                            &id_sonido_una_linea);
+                        break;
+                    default:
+                        break;
+                    }
                 }
                 else if (teclaPresionada == ALLEGRO_KEY_H || teclaPresionada == ALLEGRO_KEY_LEFT)
                 {
@@ -873,6 +1014,10 @@ int main()
     al_destroy_event_queue(queue);
     al_destroy_bitmap(imagen_pieza_caida);
     al_destroy_bitmap(imagen_pieza_movimiento);
+    al_destroy_audio_stream(musica_fondo);
+    al_destroy_sample(sonido_una_linea);
+    al_destroy_sample(sonido_4_lineas);
+    al_uninstall_audio();
 
     return 0;
 }

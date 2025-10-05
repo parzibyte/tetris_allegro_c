@@ -42,27 +42,6 @@ struct TetriminoParaElegir
 };
 uint8_t indiceGlobalTetrimino = 0;
 
-void elegirPiezaAleatoria(struct Tetrimino *destino, struct TetriminoParaElegir piezasDisponibles[TOTAL_TETRIMINOS_DISPONIBLES])
-{
-    destino->cuadricula = piezasDisponibles[indiceGlobalTetrimino].cuadricula;
-    destino->x = MITAD_CUADRICULA_X;
-    destino->y = 0;
-    indiceGlobalTetrimino++;
-    if (indiceGlobalTetrimino > TOTAL_TETRIMINOS_DISPONIBLES - 1)
-    {
-
-        aleatorizarPiezas(piezasDisponibles);
-        indiceGlobalTetrimino = 0;
-    }
-}
-void elegirSiguientePieza(struct Tetrimino *actual, struct Tetrimino *siguiente, struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES])
-{
-    actual->cuadricula = siguiente->cuadricula;
-    actual->x = siguiente->x = MITAD_CUADRICULA_X;
-    actual->y = siguiente->y = 0;
-    elegirPiezaAleatoria(siguiente, piezas);
-}
-
 void aleatorizarPiezas(struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES])
 {
     /*
@@ -84,6 +63,28 @@ void aleatorizarPiezas(struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPON
         piezas[k] = tmp;
     }
 }
+
+void elegirPiezaAleatoria(struct Tetrimino *destino, struct TetriminoParaElegir piezasDisponibles[TOTAL_TETRIMINOS_DISPONIBLES])
+{
+    destino->cuadricula = piezasDisponibles[indiceGlobalTetrimino].cuadricula;
+    destino->x = MITAD_CUADRICULA_X;
+    destino->y = 0;
+    indiceGlobalTetrimino++;
+    if (indiceGlobalTetrimino > TOTAL_TETRIMINOS_DISPONIBLES - 1)
+    {
+
+        aleatorizarPiezas(piezasDisponibles);
+        indiceGlobalTetrimino = 0;
+    }
+}
+void elegirSiguientePieza(struct Tetrimino *actual, struct Tetrimino *siguiente, struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES])
+{
+    actual->cuadricula = siguiente->cuadricula;
+    actual->x = siguiente->x = MITAD_CUADRICULA_X;
+    actual->y = siguiente->y = 0;
+    elegirPiezaAleatoria(siguiente, piezas);
+}
+
 void inicializarPiezas(struct TetriminoParaElegir piezas[TOTAL_TETRIMINOS_DISPONIBLES])
 {
     /*
@@ -490,6 +491,12 @@ int main()
     al_init();
     al_init_primitives_addon();
     al_install_keyboard();
+    al_set_new_display_option(ALLEGRO_SAMPLE_BUFFERS, 1, ALLEGRO_SUGGEST);
+    al_set_new_display_option(ALLEGRO_SAMPLES, 8, ALLEGRO_SUGGEST);
+    al_set_new_bitmap_flags(ALLEGRO_MIN_LINEAR | ALLEGRO_MAG_LINEAR);
+    // Aquí se configura el tamaño de la pantalla
+    ALLEGRO_DISPLAY *disp = al_create_display((MEDIDA_CUADRO * ANCHO_CUADRICULA * BITS_EN_UN_BYTE) + OFFSET_X, (ALTO_CUADRICULA * MEDIDA_CUADRO) + GROSOR_BORDE * 2);
+    ALLEGRO_FONT *font = al_create_builtin_font();
     if (!al_init_image_addon())
     {
         fprintf(stderr, "Error inicializando librería imagen");
@@ -516,7 +523,7 @@ int main()
     if (!musica_fondo)
     {
         fprintf(stderr, "Error cargando audio_stream\n");
-        return;
+        return 1;
     }
 
     al_attach_audio_stream_to_mixer(musica_fondo, al_get_default_mixer());
@@ -531,14 +538,14 @@ int main()
     if (!sonido_una_linea)
     {
         fprintf(stderr, "Error cargando sonido linea\n");
-        return;
+        return 1;
     }
 
     sonido_4_lineas = al_load_sample("528958__beetlemuse__level-up-mission-complete.wav");
     if (!sonido_4_lineas)
     {
         fprintf(stderr, "Error cargando sonido 4 lineas\n");
-        return;
+        return 1;
     }
     ALLEGRO_BITMAP *imagen_pieza_caida = NULL;
     ALLEGRO_BITMAP *imagen_pieza_movimiento = NULL;
@@ -565,13 +572,6 @@ int main()
     al_register_event_source(queue, al_get_timer_event_source(timer_bajar_pieza));
     al_start_timer(timer_bajar_pieza);
     /*Terminan timers para bajar pieza automáticamente*/
-
-    al_set_new_display_option(ALLEGRO_SAMPLE_BUFFERS, 1, ALLEGRO_SUGGEST);
-    al_set_new_display_option(ALLEGRO_SAMPLES, 8, ALLEGRO_SUGGEST);
-    al_set_new_bitmap_flags(ALLEGRO_MIN_LINEAR | ALLEGRO_MAG_LINEAR);
-    // Aquí se configura el tamaño de la pantalla
-    ALLEGRO_DISPLAY *disp = al_create_display((MEDIDA_CUADRO * ANCHO_CUADRICULA * BITS_EN_UN_BYTE) + OFFSET_X, (ALTO_CUADRICULA * MEDIDA_CUADRO) + GROSOR_BORDE * 2);
-    ALLEGRO_FONT *font = al_create_builtin_font();
 
     al_register_event_source(queue, al_get_keyboard_event_source());
     al_register_event_source(queue, al_get_display_event_source(disp));
@@ -655,7 +655,7 @@ int main()
                             0.0,
                             1.0,
                             ALLEGRO_PLAYMODE_ONCE,
-                            &sonido_una_linea);
+                            &id_sonido_una_linea);
                         break;
                     default:
                         break;

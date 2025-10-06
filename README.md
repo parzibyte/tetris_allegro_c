@@ -1,5 +1,5 @@
 # tetris_allegro_c
- Juego de Tetris en ANSI C (obviamente compatible con C++) usando Allegro 55
+ Juego de Tetris en ANSI C (obviamente compatible con C++) usando Allegro 5
 
 # Compilando
 

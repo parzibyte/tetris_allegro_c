@@ -644,7 +644,6 @@ void loop()
     }
 
     // Abajo
-    // TODO: ahorita no tengo botones adicionales así que usaré el de abajo como si fuera el de arriba
     if (!digitalRead(PIN_BOTON_ABAJO))
     {
       haPresionadoBotonAbajoPreviamente = true;

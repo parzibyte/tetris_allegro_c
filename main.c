@@ -161,10 +161,12 @@ uint16_t rotar90CW(uint16_t pieza)
     {
         for (int x = 0; x < 4; x++)
         {
-            int bit = (pieza >> (MAXIMO_INDICE_BIT_EN_UINT16 - (y * 4 + x))) & 1;
+            int indiceBitOrigen = (y * 4 + x);
+            int bit = (pieza >> (MAXIMO_INDICE_BIT_EN_UINT16 - indiceBitOrigen)) & 1;
             int xPrima = y;
             int yPrima = 3 - x;
-            rotado |= bit << (MAXIMO_INDICE_BIT_EN_UINT16 - (yPrima * 4 + xPrima));
+            int indiceBitDestino = (yPrima * 4 + xPrima);
+            rotado |= bit << (MAXIMO_INDICE_BIT_EN_UINT16 - indiceBitDestino);
         }
     }
     /*

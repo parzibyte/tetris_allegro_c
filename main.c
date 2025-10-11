@@ -9,6 +9,10 @@
 #include <allegro5/allegro_audio.h>
 #include <allegro5/allegro_acodec.h>
 #define OFFSET_X 200
+/*
+La MEDIDA_CUADRO debe coincidir exactamente
+con el tamaño en pixeles de las imágenes
+*/
 #define MEDIDA_CUADRO 32
 #define ANCHO_CUADRICULA 2 // Recuerda que se multiplicará por BITS_EN_UN_BYTE así que si es 2 en realidad es 16
 #define ALTO_CUADRICULA 30
@@ -21,6 +25,12 @@
 #define BITS_POR_FILA_PARA_TETRIMINO 4
 #define MITAD_CUADRICULA_X ANCHO_CUADRICULA *BITS_EN_UN_BYTE / 2 - (BITS_POR_FILA_PARA_TETRIMINO / 2);
 #define GROSOR_BORDE 10
+#define NOMBRE_CANCION_FONDO "01. Bulby - Super Mario Bros. Wonder 8 Bit VRC6.mp3"
+#define NOMBRE_SONIDO_UNA_LINEA "397819__swordmaster767__powerup.wav"
+#define NOMBRE_SONIDO_4_LINEAS "528958__beetlemuse__level-up-mission-complete.wav"
+#define NOMBRE_IMAGEN_MOVIMIENTO "bitmap.png"
+#define NOMBRE_PIEZA_CAIDA "2.png"
+#define NOMBRE_PIEZA_RESERVA "amarillo.png"
 typedef enum
 {
     MENOS_DE_CUATRO_LINEAS,
@@ -456,7 +466,6 @@ ResultadoAlBajar bajarTetrimino(struct Tetrimino *tetrimino, struct Tetrimino *s
                 }
             }
 
-            printf("Líneas consecutivas: %d\n", lineasEliminadasConsecutivamente);
             elegirSiguientePieza(tetrimino, siguiente, piezas);
             if (tetriminoColisionaConCuadriculaAlAvanzar(tetrimino, cuadricula, 0, 0))
             {
@@ -521,7 +530,7 @@ int main()
         return -1;
     }
     ALLEGRO_AUDIO_STREAM *musica_fondo = NULL;
-    musica_fondo = al_load_audio_stream("01. Bulby - Super Mario Bros. Wonder 8 Bit VRC6.mp3", 4, 2048);
+    musica_fondo = al_load_audio_stream(NOMBRE_CANCION_FONDO, 4, 2048);
     if (!musica_fondo)
     {
         fprintf(stderr, "Error cargando audio_stream\n");
@@ -536,14 +545,14 @@ int main()
     ALLEGRO_SAMPLE_ID id_sonido_una_linea;
     ALLEGRO_SAMPLE_ID id_sonido_4_lineas;
 
-    sonido_una_linea = al_load_sample("397819__swordmaster767__powerup.wav");
+    sonido_una_linea = al_load_sample(NOMBRE_SONIDO_UNA_LINEA);
     if (!sonido_una_linea)
     {
         fprintf(stderr, "Error cargando sonido linea\n");
         return 1;
     }
 
-    sonido_4_lineas = al_load_sample("528958__beetlemuse__level-up-mission-complete.wav");
+    sonido_4_lineas = al_load_sample(NOMBRE_SONIDO_4_LINEAS);
     if (!sonido_4_lineas)
     {
         fprintf(stderr, "Error cargando sonido 4 lineas\n");
@@ -551,22 +560,28 @@ int main()
     }
     ALLEGRO_BITMAP *imagen_pieza_caida = NULL;
     ALLEGRO_BITMAP *imagen_pieza_movimiento = NULL;
+    ALLEGRO_BITMAP *imagen_pieza_reserva = NULL;
 
-    imagen_pieza_caida = al_load_bitmap("bitmap.png");
+    imagen_pieza_reserva =  al_load_bitmap(NOMBRE_PIEZA_RESERVA);
+    if(!imagen_pieza_reserva){
+        fprintf(stderr, "Error cargando imagen pieza reserva");
+    }
+
+    imagen_pieza_caida = al_load_bitmap(NOMBRE_PIEZA_CAIDA);
 
     if (!imagen_pieza_caida)
     {
         fprintf(stderr, "Error cargando imagen");
     }
 
-    imagen_pieza_movimiento = al_load_bitmap("2.png");
+    imagen_pieza_movimiento = al_load_bitmap(NOMBRE_IMAGEN_MOVIMIENTO);
 
     if (!imagen_pieza_movimiento)
     {
         fprintf(stderr, "Error cargando imagen");
     }
 
-    ALLEGRO_TIMER *timer = al_create_timer(1.0 / 30.0);
+    ALLEGRO_TIMER *timer = al_create_timer(1.0 / 60.0);
     ALLEGRO_EVENT_QUEUE *queue = al_create_event_queue();
 
     /*Timers para bajar pieza automáticamente*/
@@ -588,9 +603,8 @@ int main()
     ALLEGRO_COLOR rojo = al_map_rgb_f(255, 0, 0);
     ALLEGRO_COLOR azul = al_map_rgb(0, 0, 255);
     ALLEGRO_COLOR color_borde = al_map_rgb(136, 195, 191);
-    ALLEGRO_COLOR verde = al_map_rgb_f(0, 255, 0);
 
-    uint8_t otraCuadricula[ALTO_CUADRICULA][ANCHO_CUADRICULA] = {
+    uint8_t cuadriculaJuego[ALTO_CUADRICULA][ANCHO_CUADRICULA] = {
         {0, 0},
         {0, 0},
         {0, 0},
@@ -638,7 +652,7 @@ int main()
             {
                 if (!juegoTerminado)
                 {
-                    ResultadoAlBajar r = bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas, &haUsadoLaReserva);
+                    ResultadoAlBajar r = bajarTetrimino(&piezaActual, &piezaSiguiente, cuadriculaJuego, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas, &haUsadoLaReserva);
                     switch (r)
                     {
                     case CUATRO_LINEAS_O_MAS:
@@ -673,10 +687,9 @@ int main()
 
                 if (teclaPresionada == ALLEGRO_KEY_UP || teclaPresionada == ALLEGRO_KEY_K)
                 {
-                    piezaActual.y = indiceYParaFantasma(&piezaActual, otraCuadricula);
+                    piezaActual.y = indiceYParaFantasma(&piezaActual, cuadriculaJuego);
                     banderaTocoSuelo = true;
-                    ResultadoAlBajar r = bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas, &haUsadoLaReserva);
-                    printf("Resultado %d", r);
+                    ResultadoAlBajar r = bajarTetrimino(&piezaActual, &piezaSiguiente, cuadriculaJuego, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas, &haUsadoLaReserva);
                     switch (r)
                     {
                     case CUATRO_LINEAS_O_MAS:
@@ -703,7 +716,7 @@ int main()
                 }
                 else if (teclaPresionada == ALLEGRO_KEY_J || teclaPresionada == ALLEGRO_KEY_DOWN)
                 {
-                    ResultadoAlBajar r = bajarTetrimino(&piezaActual, &piezaSiguiente, otraCuadricula, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas, &haUsadoLaReserva);
+                    ResultadoAlBajar r = bajarTetrimino(&piezaActual, &piezaSiguiente, cuadriculaJuego, &banderaTocoSuelo, &puntajeGlobal, &juegoTerminado, piezas, &haUsadoLaReserva);
                     switch (r)
                     {
                     case CUATRO_LINEAS_O_MAS:
@@ -730,21 +743,21 @@ int main()
                 }
                 else if (teclaPresionada == ALLEGRO_KEY_H || teclaPresionada == ALLEGRO_KEY_LEFT)
                 {
-                    if (!tetriminoColisionaConCuadriculaAlAvanzar(&piezaActual, otraCuadricula, -1, 0))
+                    if (!tetriminoColisionaConCuadriculaAlAvanzar(&piezaActual, cuadriculaJuego, -1, 0))
                     {
                         piezaActual.x--;
                     }
                 }
                 else if (teclaPresionada == ALLEGRO_KEY_L || teclaPresionada == ALLEGRO_KEY_RIGHT)
                 {
-                    if (!tetriminoColisionaConCuadriculaAlAvanzar(&piezaActual, otraCuadricula, 1, 0))
+                    if (!tetriminoColisionaConCuadriculaAlAvanzar(&piezaActual, cuadriculaJuego, 1, 0))
                     {
                         piezaActual.x++;
                     }
                 }
                 else if (teclaPresionada == ALLEGRO_KEY_SPACE)
                 {
-                    if (!tetriminoColisionaConCuadriculaAlRotar(&piezaActual, otraCuadricula))
+                    if (!tetriminoColisionaConCuadriculaAlRotar(&piezaActual, cuadriculaJuego))
                     {
                         piezaActual.cuadricula = rotar90CW(piezaActual.cuadricula);
                     }
@@ -776,13 +789,12 @@ int main()
                             haUsadoLaReserva = true;
                         }
                     }
-                    // printf("La reserva es %x, es 0? %d", reserva.cuadricula, reserva.cuadricula==0);
                 }
             }
             else
             {
                 puntajeGlobal = 0;
-                memset(otraCuadricula, 0, ANCHO_CUADRICULA * ALTO_CUADRICULA);
+                memset(cuadriculaJuego, 0, ANCHO_CUADRICULA * ALTO_CUADRICULA);
                 juegoTerminado = false;
                 elegirSiguientePieza(&piezaActual, &piezaSiguiente, piezas);
             }
@@ -824,24 +836,14 @@ int main()
                 {
                     for (int i = 0; i < BITS_EN_UN_BYTE; i++)
                     {
-                        int encendido = (otraCuadricula[y][x] >> (MAXIMO_INDICE_BIT_EN_BYTE - i)) & 1;
+                        int encendido = (cuadriculaJuego[y][x] >> (MAXIMO_INDICE_BIT_EN_BYTE - i)) & 1;
                         // Si hay un 1 en este bit entonces dibujamos la imagen
                         if (encendido)
                         {
 
-                            /**/
-                            float sw = al_get_bitmap_width(imagen_pieza_caida);
-                            float sh = al_get_bitmap_height(imagen_pieza_caida);
-
                             float dx = xCoordenada + GROSOR_BORDE;
                             float dy = yCoordenada + GROSOR_BORDE;
-                            float dw = MEDIDA_CUADRO;
-                            float dh = MEDIDA_CUADRO;
-
-                            al_draw_scaled_bitmap(imagen_pieza_caida,
-                                                  0, 0, sw, sh,
-                                                  dx, dy, dw, dh, 0);
-                            /** */
+                            al_draw_bitmap(imagen_pieza_caida, dx, dy, 0);
                         }
                         else
                         {
@@ -878,23 +880,13 @@ int main()
                     uint8_t YRelativoDentroDeCuadricula = indiceBit / BITS_POR_FILA_PARA_TETRIMINO;
                     int sumaX = piezaActual.x + xRelativoDentroDeCuadricula;
                     int sumaY = piezaActual.y + YRelativoDentroDeCuadricula;
-                    int8_t indicePiezaFantasma = indiceYParaFantasma(&piezaActual, otraCuadricula);
+                    int8_t indicePiezaFantasma = indiceYParaFantasma(&piezaActual, cuadriculaJuego);
                     // Este es el fantasma
                     al_draw_rectangle((sumaX * MEDIDA_CUADRO) + GROSOR_BORDE, ((YRelativoDentroDeCuadricula + indicePiezaFantasma) * MEDIDA_CUADRO) + GROSOR_BORDE, (sumaX * MEDIDA_CUADRO) + MEDIDA_CUADRO + GROSOR_BORDE, (((YRelativoDentroDeCuadricula + indicePiezaFantasma) * MEDIDA_CUADRO) + MEDIDA_CUADRO) + GROSOR_BORDE, azul, 2);
                     // Y esta es la pieza en movimiento
-                    float sx = 0;
-                    float sy = 0;
-                    float sw = al_get_bitmap_width(imagen_pieza_movimiento);
-                    float sh = al_get_bitmap_height(imagen_pieza_movimiento);
-
                     float dx = (sumaX * MEDIDA_CUADRO) + GROSOR_BORDE;
                     float dy = (sumaY * MEDIDA_CUADRO) + GROSOR_BORDE;
-                    float dw = MEDIDA_CUADRO;
-                    float dh = MEDIDA_CUADRO;
-
-                    al_draw_scaled_bitmap(imagen_pieza_movimiento,
-                                          sx, sy, sw, sh,
-                                          dx, dy, dw, dh, 0);
+                    al_draw_bitmap(imagen_pieza_movimiento, dx, dy, 0);
                 }
             }
 
@@ -928,19 +920,7 @@ int main()
                     uint8_t YRelativoDentroDeCuadricula = indiceBit / BITS_POR_FILA_PARA_TETRIMINO;
                     int sumaX = 50 + (ANCHO_CUADRICULA * BITS_EN_UN_BYTE * MEDIDA_CUADRO) + GROSOR_BORDE * 2 + xRelativoDentroDeCuadricula * MEDIDA_CUADRO;
                     int sumaY = 50 + GROSOR_BORDE + YRelativoDentroDeCuadricula * MEDIDA_CUADRO;
-                    float sx = 0;
-                    float sy = 0;
-                    float sw = al_get_bitmap_width(imagen_pieza_movimiento);
-                    float sh = al_get_bitmap_height(imagen_pieza_movimiento);
-
-                    float dx = (sumaX * MEDIDA_CUADRO) + GROSOR_BORDE;
-                    float dy = (sumaY * MEDIDA_CUADRO) + GROSOR_BORDE;
-                    float dw = MEDIDA_CUADRO;
-                    float dh = MEDIDA_CUADRO;
-
-                    al_draw_scaled_bitmap(imagen_pieza_movimiento,
-                                          sx, sy, sw, sh,
-                                          sumaX, sumaY, dw, dh, 0);
+                    al_draw_bitmap(imagen_pieza_movimiento, sumaX, sumaY, 0);
                 }
             }
 
@@ -970,19 +950,7 @@ int main()
                         uint8_t YRelativoDentroDeCuadricula = indiceBit / BITS_POR_FILA_PARA_TETRIMINO;
                         int sumaX = 50 + (ANCHO_CUADRICULA * BITS_EN_UN_BYTE * MEDIDA_CUADRO) + GROSOR_BORDE * 2 + xRelativoDentroDeCuadricula * MEDIDA_CUADRO;
                         int sumaY = 200 + GROSOR_BORDE + YRelativoDentroDeCuadricula * MEDIDA_CUADRO;
-                        float sx = 0;
-                        float sy = 0;
-                        float sw = al_get_bitmap_width(imagen_pieza_movimiento);
-                        float sh = al_get_bitmap_height(imagen_pieza_movimiento);
-
-                        float dx = (sumaX * MEDIDA_CUADRO) + GROSOR_BORDE;
-                        float dy = (sumaY * MEDIDA_CUADRO) + GROSOR_BORDE;
-                        float dw = MEDIDA_CUADRO;
-                        float dh = MEDIDA_CUADRO;
-
-                        al_draw_scaled_bitmap(imagen_pieza_movimiento,
-                                              sx, sy, sw, sh,
-                                              sumaX, sumaY, dw, dh, 0);
+                        al_draw_bitmap(imagen_pieza_reserva, sumaX, sumaY, 0);
                     }
                 }
             }
